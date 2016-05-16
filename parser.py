@@ -46,6 +46,15 @@ class Film:
         self.__time = time
         self.__mean_rating = mean_rating
 
+    def __eq__(self, other):
+        return self.get_id() == other.get_id()
+
+    def __ne__(self, other):
+        return self.get_id() != other.get_id()
+
+    def __hash__(self):
+        return hash(self.get_id())
+
     def lazy_load(self):
         self.__parser.fill_film(self)
 
@@ -115,6 +124,15 @@ class User:
         self.__id = id
         self.__films_with_rate = None
 
+    def __eq__(self, other):
+        return self.get_id() == other.get_id()
+
+    def __ne__(self, other):
+        return self.get_id() != other.get_id()
+
+    def __hash__(self):
+        return hash(self.get_id())
+
     def get_id(self):
         return self.__id
 
@@ -125,7 +143,10 @@ class User:
         return self.__films_with_rate
 
     def add_film_with_rate(self, film, rate):
-        self.__films_with_rate.append({'film': film, 'rate': rate})
+        if self.__films_with_rate is None and film:
+            self.__films_with_rate = []
+
+        self.__films_with_rate.append({'film': film, 'rate': int(rate)})
 
 
 class RequestSender:
@@ -163,6 +184,13 @@ class RequestSender:
 
 
 class Parser:
+    """
+    You should use such methods as public:
+    - get_film_with_id_by_title
+    - get_film_user
+
+    Other methods will be called when you call some User's or Film's methods
+    """
     search_query = "http://www.kinopoisk.ru/s/type/all/find/"
     film_profile_query = "http://www.kinopoisk.ru/film/"
     film_last_vote_users_query \
@@ -179,6 +207,11 @@ class Parser:
             u'время': self.set_film_time}
 
     def get_film_with_id_by_title(self, title):
+        """
+        Get film by title. (Only id, other properties are lazy fetched)
+        :param title: name of film you want to find
+        :return: film
+        """
         search_film_url = self.search_query + title
         film_id = self.get_film_id_on_search_page(search_film_url)
         return Film(self, film_id)
@@ -196,6 +229,11 @@ class Parser:
         return self.rs.get_html_page(film_url)
 
     def get_film_users(self, film):
+        """
+        Get all user who voted the film
+        :param film: film
+        :return: all users who voted the film
+        """
         users = []
 
         film_id = film.get_id()
@@ -210,6 +248,12 @@ class Parser:
         return users
 
     def fill_film(self, film):
+        """
+        For inner call from Film.
+        Fetching data and filling film properties
+        :param film: film
+        :return: film with all fetched properties
+        """
         film_page = self.find_film_page_by_id(film.get_id())
         soup = BeautifulSoup(film_page, 'html.parser')
         self.set_film_title(film, soup)
@@ -258,6 +302,12 @@ class Parser:
         film.set_mean_rating({'rate': rate, 'count': count})
 
     def fill_user_films_with_rate(self, user):
+        """
+        For inner call from User.
+        Fetching data and filling user property :films_with_rate
+        :param user: user
+        :return: user with all fetched properties
+        """
         user_id = user.get_id()
         url = self.user_voted_films_query.format(user_id[-3:], user_id)
         user_films_xml = self.rs.get_html_page(url)
@@ -271,13 +321,18 @@ class Parser:
 
         return user
 
-# user_id = "5186659"
-# rs = RequestSender()
-# p = Parser(rs)
-#
-# u = User(p, user_id)
-#
-# for f in u.get_films_with_rate():
-#     print str(f['film'].get_id()) + ' : ' + str(f['rate'])
+if __name__ == "__main__":
+    # user_id = "5186659"
+    rs = RequestSender()
+    p = Parser(rs)
+    #
+    # u = User(p, user_id)
+    #
+    # for f in u.get_films_with_rate():
+    #     print str(f['film'].get_id()) + ' : ' + str(f['rate'])
 
+    f1 = Film(rs, 123)
+    f2 = Film(rs, 1323)
+    for f in set([f1, f1 , f2]):
+        print f.get_id()
 
