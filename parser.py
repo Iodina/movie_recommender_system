@@ -47,7 +47,7 @@ class Film:
         self.__mean_rating = mean_rating
 
     def lazy_load(self):
-        self.__parser.get_film_by_id(self.__id)
+        self.__parser.fill_film(self)
 
     def get_id(self):
         return self.__id
@@ -110,18 +110,22 @@ class Film:
 
 
 class User:
-    def __init__(self, id):
+    def __init__(self, parser, id):
+        self.__parser = parser
         self.__id = id
-        self.__films = []
+        self.__films_with_rate = None
 
     def get_id(self):
         return self.__id
 
-    def get_films(self):
-        return self.__films
+    def get_films_with_rate(self):
+        if self.__films_with_rate is None:
+            self.__films_with_rate = []
+            self.__parser.fill_user_films_with_rate(self)
+        return self.__films_with_rate
 
-    def add_film(self, film_id, rate):
-        self.get_films().append({film_id: rate})
+    def add_film_with_rate(self, film, rate):
+        self.__films_with_rate.append({'film': film, 'rate': rate})
 
 
 class RequestSender:
@@ -132,12 +136,15 @@ class RequestSender:
 
     def get_html_page(self, url):
         for proxy in self.proxies:
-            req = Request(proxy + url,
+            req = Request(proxy + urllib2.quote(url),
                           data=None,
                           headers={
                               'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) '
                                             'AppleWebKit/537.36 (KHTML, like Gecko) '
-                                            'Chrome/35.0.1916.47 Safari/537.36'}
+                                            'Chrome/35.0.1916.47 Safari/537.36',
+                              'Keep-Alive': '300',
+                              'Connection': 'keep-alive',
+                              'Referer': 'http://www.kinopoisk.ru/',}
                           )
             try:
                 page = urllib2.urlopen(req).read()
@@ -158,6 +165,9 @@ class RequestSender:
 class Parser:
     search_query = "http://www.kinopoisk.ru/s/type/all/find/"
     film_profile_query = "http://www.kinopoisk.ru/film/"
+    film_last_vote_users_query \
+        = "http://www.kinopoisk.ru/graph_data/last_vote_data_film/{0}/last_vote_data_film_{1}.xml"
+    user_voted_films_query = 'http://www.kinopoisk.ru/graph_data/last_vote_data/{0}/last_vote_{1}__all.xml'
 
     def __init__(self, rs):
         self.rs = rs
@@ -182,18 +192,25 @@ class Parser:
                 return name.a.get('href')
 
     def find_film_page_by_id(self, film_id):
-        film_url = self.film_profile_query + film_id
+        film_url = self.film_profile_query + str(film_id)
         return self.rs.get_html_page(film_url)
 
     def get_film_users(self, film):
         users = []
+
         film_id = film.get_id()
-        # Todo
+        url = self.film_last_vote_users_query.format(film_id[-3:], film_id)
+        film_users_xml = self.rs.get_html_page(url)
+
+        soup = BeautifulSoup(film_users_xml, 'xml')
+        for value in soup.find('graph').find_all('value'):
+            user = User(self, int(re.search('\d+', value.get('url')).group()))
+            users.append(user)
+
         return users
 
-    def get_film_by_id(self, film_id):
-        film = Film(self, film_id)
-        film_page = self.find_film_page_by_id(film_id)
+    def fill_film(self, film):
+        film_page = self.find_film_page_by_id(film.get_id())
         soup = BeautifulSoup(film_page, 'html.parser')
         self.set_film_title(film, soup)
         self.set_film_mean_rating(film, soup)
@@ -202,10 +219,11 @@ class Parser:
             setter = self.property_map.get(td_key.text)
             if setter is not None:
                 setter(film, td_value)
+
         return film
 
     def set_film_title(self, film, soup):
-        film.title = soup.h1.text
+        film.set_title(soup.h1.text)
 
     def set_film_year(self, film, cell_content):
         film.set_year(int(cell_content.text));
@@ -215,19 +233,19 @@ class Parser:
                                    cell_content.a.get("href")).group())
 
         country_name = "".join(cell_content.a.text.split())
-        film.set_country({country_id: country_name})
+        film.set_country({'id': country_id, 'name': country_name})
 
     def set_film_director(self, film, cell_content):
         director_id = int(re.search('(?<=/)\d+',
                                 cell_content.a.get("href")).group())
         director_name = ' '.join(cell_content.a.text.split())
-        film.set_director({director_id: director_name})
+        film.set_director({'id': director_id, 'name': director_name})
 
     def set_film_genre(self, film, cell_content):
         genre_id = int(re.search('(?<=/)\d+',
                              cell_content.a.get("href")).group())
         genre_name = ''.join(cell_content.a.text.split())
-        film.set_genre({genre_id: genre_name})
+        film.set_genre({'id': genre_id, 'name': genre_name})
 
     def set_film_time(self, film, cell_content):
         time = int(re.search('\d+ ',
@@ -239,11 +257,27 @@ class Parser:
         count = int(''.join(soup.find('span', {'class': 'ratingCount'}).text.split()))
         film.set_mean_rating({'rate': rate, 'count': count})
 
+    def fill_user_films_with_rate(self, user):
+        user_id = user.get_id()
+        url = self.user_voted_films_query.format(user_id[-3:], user_id)
+        user_films_xml = self.rs.get_html_page(url)
 
-film_id = "4871"
+        soup = BeautifulSoup(user_films_xml, 'xml')
+        for value in soup.find('graph').find_all('value'):
+            film_id = int(re.search('\d+', value.get('url')).group())
+            rate = int(value.text)
+            film = Film(self, film_id)
+            user.add_film_with_rate(film, rate)
 
-p = Parser(RequestSender())
+        return user
 
-film = p.get_film_by_id(film_id)
+# user_id = "5186659"
+# rs = RequestSender()
+# p = Parser(rs)
+#
+# u = User(p, user_id)
+#
+# for f in u.get_films_with_rate():
+#     print str(f['film'].get_id()) + ' : ' + str(f['rate'])
 
-print p.get_film_id_on_search_page("Запах женщины")
+
