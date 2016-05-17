@@ -139,7 +139,11 @@ class User:
     def get_films_with_rate(self):
         if self.__films_with_rate is None:
             self.__films_with_rate = []
-            self.__parser.fill_user_films_with_rate(self)
+            try:
+                self.__parser.fill_user_films_with_rate(self)
+            except AttributeError:
+                self.__films_with_rate = None
+
         return self.__films_with_rate
 
     def add_film_with_rate(self, film, rate):
@@ -197,7 +201,9 @@ class Parser:
         = "http://www.kinopoisk.ru/graph_data/last_vote_data_film/{0}/last_vote_data_film_{1}.xml"
     user_voted_films_query = 'http://www.kinopoisk.ru/graph_data/last_vote_data/{0}/last_vote_{1}__all.xml'
 
-    def __init__(self, rs):
+    def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None, rs=RequestSender()):
+        self.MAX_COUNT_USER_FILMS = MAX_COUNT_USER_FILMS
+        self.MAX_COUNT_FILM_USERS = MAX_COUNT_FILM_USERS
         self.rs = rs
         self.property_map = {
             u'год': self.set_film_year,
@@ -237,13 +243,17 @@ class Parser:
         users = []
 
         film_id = film.get_id()
-        url = self.film_last_vote_users_query.format(film_id[-3:], film_id)
+        url = self.film_last_vote_users_query.format(str(film_id)[-3:], film_id)
         film_users_xml = self.rs.get_html_page(url)
 
+        index = 1
         soup = BeautifulSoup(film_users_xml, 'xml')
         for value in soup.find('graph').find_all('value'):
+            if self.MAX_COUNT_FILM_USERS and index > self.MAX_COUNT_FILM_USERS:
+                break
             user = User(self, int(re.search('\d+', value.get('url')).group()))
             users.append(user)
+            index += 1
 
         return users
 
@@ -309,15 +319,19 @@ class Parser:
         :return: user with all fetched properties
         """
         user_id = user.get_id()
-        url = self.user_voted_films_query.format(user_id[-3:], user_id)
+        url = self.user_voted_films_query.format(str(user_id)[-3:], user_id)
         user_films_xml = self.rs.get_html_page(url)
 
         soup = BeautifulSoup(user_films_xml, 'xml')
+        index = 1
         for value in soup.find('graph').find_all('value'):
+            if self.MAX_COUNT_USER_FILMS and index > self.MAX_COUNT_USER_FILMS:
+                break
             film_id = int(re.search('\d+', value.get('url')).group())
             rate = int(value.text)
             film = Film(self, film_id)
             user.add_film_with_rate(film, rate)
+            index += 1
 
         return user
 

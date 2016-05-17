@@ -1,12 +1,13 @@
 import parser as prs
 import numpy as np
 import csv
+import cPickle
 
 __author__ = 'mishashamen'
 
 
 class RatingMatrix:
-    def __init__(self, users, min_num_of_voted_films=1):
+    def __init__(self, users, MIN_NUM_OF_VOTED_FILMS=1):
         self.__rating_matrix = None
         self.indexes_users_map = {}
         self.users_indexes_map = {}
@@ -18,7 +19,9 @@ class RatingMatrix:
         user_index = 0
         for user in users:
             films_with_rate = user.get_films_with_rate()
-            if len(films_with_rate) >= min_num_of_voted_films:
+            if films_with_rate is None:
+                pass
+            elif len(films_with_rate) >= MIN_NUM_OF_VOTED_FILMS:
                 self.indexes_users_map[user_index] = user
                 self.users_indexes_map[user] = user_index
                 user_index += 1
@@ -29,8 +32,6 @@ class RatingMatrix:
             self.indexes_films_map[film_index] = film
             self.films_indexes_map[film] = film_index
             film_index += 1
-
-            # = np.zeros((user_index, film_index))
 
     def get_rating_matrix(self):
         if self.__rating_matrix is None:
@@ -83,11 +84,14 @@ class RatingMatrix:
                     if rate != 0.:
                         wr.writerow([user_index, film_index, rate])
 
+        # json.dumps({'foo': 'bar'})
+
 
 
 class MatrixCreator:
-    rs = prs.RequestSender()
-    parser = prs.Parser(rs)
+
+    def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):
+        self.parser = prs.Parser(MAX_COUNT_USER_FILMS, MAX_COUNT_FILM_USERS)
 
     def create_by_titles_films_users(self, film_names):
         users = []
@@ -123,13 +127,15 @@ if __name__ == "__main__":
 
     rm = RatingMatrix(set([u1, u2, u3, u4]))
 
-    print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
-    print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
-
-    print rm.get_rating_matrix()
-    rm.delete_row(0)
-    rm.delete_column(0)
-    print rm.get_rating_matrix()
-    print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
-    print [str(key.get_id()) + ' : ' + str(rm.users_indexes_map[key]) for key in rm.users_indexes_map]
-    print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
+    print cPickle.dumps(rm.indexes_users_map)
+    # rm.save_rating_matrix_as_file('matrix.dat')
+    # print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
+    # print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
+    #
+    # print rm.get_rating_matrix()
+    # rm.delete_row(0)
+    # rm.delete_column(0)
+    # print rm.get_rating_matrix()
+    # print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
+    # print [str(key.get_id()) + ' : ' + str(rm.users_indexes_map[key]) for key in rm.users_indexes_map]
+    # print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
