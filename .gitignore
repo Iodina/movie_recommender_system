@@ -3,6 +3,9 @@
 *.iml
 *.iws
 
+#Python
+*.pyc
+
 # Mac
 .DS_Store
 

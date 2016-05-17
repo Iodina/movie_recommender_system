@@ -37,7 +37,7 @@ class Film:
                  time=None,
                  mean_rating=None):
         self.__parser = parser
-        self.__id = id
+        self.__id = int(id)
         self.__title = title
         self.__year = year
         self.__country = country
@@ -121,7 +121,7 @@ class Film:
 class User:
     def __init__(self, parser, id):
         self.__parser = parser
-        self.__id = id
+        self.__id = int(id)
         self.__films_with_rate = None
 
     def __eq__(self, other):

@@ -1,14 +1,13 @@
 import parser as prs
 import numpy as np
 import csv
-import cPickle
 
 __author__ = 'mishashamen'
 
 
 class RatingMatrix:
-    def __init__(self, users, MIN_NUM_OF_VOTED_FILMS=1):
-        self.__rating_matrix = None
+    def __init__(self, users=[], MIN_NUM_OF_VOTED_FILMS=1):
+        self.rating_matrix = None
         self.indexes_users_map = {}
         self.users_indexes_map = {}
         self.indexes_films_map = {}
@@ -34,21 +33,22 @@ class RatingMatrix:
             film_index += 1
 
     def get_rating_matrix(self):
-        if self.__rating_matrix is None:
+        if self.rating_matrix is None:
             self.fill_rating_matrix()
-        return self.__rating_matrix
+        return self.rating_matrix
 
     def fill_rating_matrix(self):
-        self.__rating_matrix = np.zeros((len(self.users_indexes_map), len(self.films_indexes_map)))
+        self.rating_matrix = np.zeros((len(self.users_indexes_map), len(self.films_indexes_map)))
         for user in self.users_indexes_map.keys():
             films_with_rate = user.get_films_with_rate()
             for film_with_rate in films_with_rate:
                 user_index = self.users_indexes_map[user]
                 film_index = self.films_indexes_map[film_with_rate['film']]
-                self.__rating_matrix[user_index][film_index] = film_with_rate['rate']
+                self.rating_matrix[user_index][film_index] = film_with_rate['rate']
 
     def delete_row(self, index):
-        self.__rating_matrix = np.delete(self.__rating_matrix, index, 0)
+        if self.rating_matrix is not None:
+            self.rating_matrix = np.delete(self.rating_matrix, index, 0)
         user = self.indexes_users_map[index]
         del self.users_indexes_map[user]
         del self.indexes_users_map[index]
@@ -61,7 +61,8 @@ class RatingMatrix:
             del self.indexes_users_map[last_element_index]
 
     def delete_column(self, index):
-        self.__rating_matrix = np.delete(self.__rating_matrix, index, 1)
+        if self.rating_matrix is not None:
+            self.rating_matrix = np.delete(self.rating_matrix, index, 1)
         film = self.indexes_films_map[index]
         del self.films_indexes_map[film]
         del self.indexes_films_map[index]
@@ -74,22 +75,28 @@ class RatingMatrix:
             del self.indexes_films_map[last_element_index]
 
     def save_rating_matrix_as_file(self, filename):
-        if self.__rating_matrix is None:
+        if self.rating_matrix is None:
             self.fill_rating_matrix()
         with open(filename, 'wb') as my_file:
             wr = csv.writer(my_file, delimiter=' ')
-            for user_index in xrange(self.__rating_matrix.shape[0]):
-                for film_index in xrange(self.__rating_matrix.shape[1]):
-                    rate = self.__rating_matrix[user_index][film_index]
+            for user_index in xrange(self.rating_matrix.shape[0]):
+                for film_index in xrange(self.rating_matrix.shape[1]):
+                    rate = self.rating_matrix[user_index][film_index]
                     if rate != 0.:
                         wr.writerow([user_index, film_index, rate])
 
-        # json.dumps({'foo': 'bar'})
+        with open(filename+'_user_map', 'wb') as my_file:
+            wr = csv.writer(my_file, delimiter=' ')
+            for key, value in self.indexes_users_map.iteritems():
+                wr.writerow([key, value.get_id()])
 
+        with open(filename+'_film_map', 'wb') as my_file:
+            wr = csv.writer(my_file, delimiter=' ')
+            for key, value in self.indexes_films_map.iteritems():
+                wr.writerow([key, value.get_id()])
 
 
 class MatrixCreator:
-
     def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):
         self.parser = prs.Parser(MAX_COUNT_USER_FILMS, MAX_COUNT_FILM_USERS)
 
@@ -100,6 +107,32 @@ class MatrixCreator:
             users += self.parser.get_film_users(film)
 
         return RatingMatrix(set(users))
+
+    def restore_from_file(self, file_name):
+        rm = RatingMatrix()
+        with open(file_name+'_user_map', 'rb') as my_file:
+            r = csv.reader(my_file)
+            for row in r:
+                index, id = row[0].split(' ')
+                rm.indexes_users_map[int(index)] = prs.User(self.parser, id)
+                rm.users_indexes_map[rm.indexes_users_map[int(index)]] = int(id)
+
+        with open(file_name+'_film_map', 'rb') as my_file:
+            r = csv.reader(my_file)
+            for row in r:
+                index, id = row[0].split(' ')
+                rm.indexes_films_map[int(index)] = prs.Film(self.parser, id)
+                rm.films_indexes_map[rm.indexes_films_map[int(index)]] = int(id)
+
+        rm.rating_matrix = np.zeros((len(rm.users_indexes_map), len(rm.films_indexes_map)))
+
+        with open(file_name, 'rb') as my_file:
+            r = csv.reader(my_file)
+            for row in r:
+                user_index, film_index, rate = row[0].split(' ')
+                rm.rating_matrix[int(user_index)][int(film_index)] = float(rate)
+
+        return rm
 
 if __name__ == "__main__":
     p = prs.Parser(prs.RequestSender())
@@ -126,16 +159,4 @@ if __name__ == "__main__":
     u4.add_film_with_rate(f3, 5)
 
     rm = RatingMatrix(set([u1, u2, u3, u4]))
-
-    print cPickle.dumps(rm.indexes_users_map)
-    # rm.save_rating_matrix_as_file('matrix.dat')
-    # print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
-    # print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
-    #
-    # print rm.get_rating_matrix()
-    # rm.delete_row(0)
-    # rm.delete_column(0)
-    # print rm.get_rating_matrix()
-    # print [str(key) + ' : ' + str(rm.indexes_users_map[key].get_id()) for key in rm.indexes_users_map]
-    # print [str(key.get_id()) + ' : ' + str(rm.users_indexes_map[key]) for key in rm.users_indexes_map]
-    # print [str(key) + ' : ' + str(rm.indexes_films_map[key].get_id()) for key in rm.indexes_films_map]
+    print rm.get_rating_matrix()
