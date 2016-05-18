@@ -7,6 +7,7 @@ __author__ = 'mishashamen'
 
 class RatingMatrix:
     def __init__(self, users=[], MIN_NUM_OF_VOTED_FILMS=1):
+        self.indexes_with_fake_user_ids = {}
         self.rating_matrix = None
         self.indexes_users_map = {}
         self.users_indexes_map = {}
@@ -23,6 +24,8 @@ class RatingMatrix:
             elif len(films_with_rate) >= MIN_NUM_OF_VOTED_FILMS:
                 self.indexes_users_map[user_index] = user
                 self.users_indexes_map[user] = user_index
+                if user.get_id() < 0:
+                    self.indexes_with_fake_user_ids[user_index] = user.get_id()
                 user_index += 1
                 films += [fwr['film'] for fwr in films_with_rate]
 
@@ -49,6 +52,10 @@ class RatingMatrix:
     def delete_row(self, index):
         if self.rating_matrix is not None:
             self.rating_matrix = np.delete(self.rating_matrix, index, 0)
+
+        if index in self.indexes_with_fake_user_ids.keys():
+            del self.indexes_with_fake_user_ids[index]
+
         user = self.indexes_users_map[index]
         del self.users_indexes_map[user]
         del self.indexes_users_map[index]
@@ -100,11 +107,17 @@ class MatrixCreator:
     def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):
         self.parser = prs.Parser(MAX_COUNT_USER_FILMS, MAX_COUNT_FILM_USERS)
 
-    def create_by_titles_films_users(self, film_names):
+    def create_users_by_film_titles(self, film_names_with_rate_list):   # [{film_name : film_rate, ...}, ...]
         users = []
-        for name in film_names:
-            film = self.parser.get_film_with_id_by_title(name)
-            users += self.parser.get_film_users(film)
+        fake_user_id = -1
+        for film_names_with_rate in film_names_with_rate_list:
+            fake_user = prs.User(self.parser, fake_user_id)
+            for film_name, rate in film_names_with_rate.iteritems():
+                film = self.parser.get_film_with_id_by_title(film_name)
+                fake_user.add_film_with_rate(film, rate)
+                users += self.parser.get_film_users(film)
+            users.append(fake_user)
+            fake_user_id -= 1
 
         return RatingMatrix(set(users))
 
@@ -115,14 +128,16 @@ class MatrixCreator:
             for row in r:
                 index, id = row[0].split(' ')
                 rm.indexes_users_map[int(index)] = prs.User(self.parser, id)
-                rm.users_indexes_map[rm.indexes_users_map[int(index)]] = int(id)
+                rm.users_indexes_map[rm.indexes_users_map[int(index)]] = int(index)
+                if int(id) < 0:
+                    rm.indexes_with_fake_user_ids[int(index)] = int(id)
 
         with open(file_name+'_film_map', 'rb') as my_file:
             r = csv.reader(my_file)
             for row in r:
                 index, id = row[0].split(' ')
                 rm.indexes_films_map[int(index)] = prs.Film(self.parser, id)
-                rm.films_indexes_map[rm.indexes_films_map[int(index)]] = int(id)
+                rm.films_indexes_map[rm.indexes_films_map[int(index)]] = int(index)
 
         rm.rating_matrix = np.zeros((len(rm.users_indexes_map), len(rm.films_indexes_map)))
 
@@ -131,6 +146,10 @@ class MatrixCreator:
             for row in r:
                 user_index, film_index, rate = row[0].split(' ')
                 rm.rating_matrix[int(user_index)][int(film_index)] = float(rate)
+
+                user = rm.indexes_users_map[int(user_index)]
+                film = rm.indexes_films_map[int(film_index)]
+                user.add_film_with_rate(film, float(rate))
 
         return rm
 

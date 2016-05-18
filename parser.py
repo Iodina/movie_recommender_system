@@ -56,7 +56,10 @@ class Film:
         return hash(self.get_id())
 
     def lazy_load(self):
-        self.__parser.fill_film(self)
+        try:
+            self.__parser.fill_film(self)
+        except AttributeError:
+            pass
 
     def get_id(self):
         return self.__id
