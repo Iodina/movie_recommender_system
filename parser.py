@@ -283,7 +283,7 @@ class Parser:
         film.set_title(soup.h1.text)
 
     def set_film_year(self, film, cell_content):
-        film.set_year(int(cell_content.text));
+        film.set_year(int(cell_content.a.text));
 
     def set_film_country(self, film, cell_content):
         country_id = int(re.search('(?<=/)\d+',

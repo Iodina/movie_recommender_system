@@ -7,17 +7,27 @@ __author__ = 'mishashamen'
 
 class RatingMatrix:
     def __init__(self, users=[], MIN_NUM_OF_VOTED_FILMS=1):
-        self.indexes_with_fake_user_ids = {}
-        self.rating_matrix = None
-        self.indexes_users_map = {}
-        self.users_indexes_map = {}
-        self.indexes_films_map = {}
-        self.films_indexes_map = {}
+        """
+        Builds rating matrix (`A`) and adds fake users with
+        films and rates from `users`
+        Mapping index <-> User and index <-> Film
+        helps to find object by matrix index
+        :param users: [{Film: rate, ...}, ...]
+        :param MIN_NUM_OF_VOTED_FILMS:
+        :return:
+        """
+        self.indexes_with_fake_user_ids = {}  # {int(user_index): int(fake_user_id)}
+        self.rating_matrix = None   # numPy array
+        self.indexes_users_map = {}  # {int(index): User}
+        self.users_indexes_map = {}  # {User: int(index)}
+        self.indexes_films_map = {}  # {int(index): Film}
+        self.films_indexes_map = {}  # {Film: int(index)}
 
         films = []
 
         user_index = 0
         for user in users:
+            print 'user id:' + str(user.get_id())
             films_with_rate = user.get_films_with_rate()
             if films_with_rate is None:
                 pass
@@ -31,6 +41,7 @@ class RatingMatrix:
 
         film_index = 0
         for film in set(films):
+            print 'film id:' + str(film.get_id())
             self.indexes_films_map[film_index] = film
             self.films_indexes_map[film] = film_index
             film_index += 1
@@ -107,13 +118,14 @@ class MatrixCreator:
     def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):
         self.parser = prs.Parser(MAX_COUNT_USER_FILMS, MAX_COUNT_FILM_USERS)
 
-    def create_users_by_film_titles(self, film_names_with_rate_list):   # [{film_name : film_rate, ...}, ...]
+    def create_matrix_by_film_titles(self, film_names_with_rate_list):   # [{film_name : film_rate, ...}, ...]
         users = []
         fake_user_id = -1
         for film_names_with_rate in film_names_with_rate_list:
             fake_user = prs.User(self.parser, fake_user_id)
             for film_name, rate in film_names_with_rate.iteritems():
                 film = self.parser.get_film_with_id_by_title(film_name)
+                print film_name + ', id: ' + str(film.get_id())
                 fake_user.add_film_with_rate(film, rate)
                 users += self.parser.get_film_users(film)
             users.append(fake_user)
