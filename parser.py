@@ -154,6 +154,13 @@ class User:
             self.__films_with_rate = []
 
         self.__films_with_rate.append({'film': film, 'rate': int(rate)})
+        
+    def get_preferences(self):
+        res = {}
+        for item in self.__films_with_rate:
+            res[item['film']] = item['rate']
+        
+        return res
 
 
 class RequestSender:
