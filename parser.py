@@ -27,6 +27,9 @@ def cut_substring_between(first, last):
 
 
 class Film:
+    __slots__ = ['__parser', '__id', '__title', '__year', '__country',
+                 '__director', '__genre', '__time', '__mean_rating']
+
     def __init__(self,
                  parser,
                  id,
@@ -137,6 +140,8 @@ class Film:
 
 
 class User:
+    __slots__ = ['__parser', '__id', '__films_with_rate']
+ 
     def __init__(self, parser, id):
         self.__parser = parser
         self.__id = int(id)
