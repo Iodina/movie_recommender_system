@@ -113,6 +113,30 @@ class RatingMatrix:
             for key, value in self.indexes_films_map.iteritems():
                 wr.writerow([key, value.get_id()])
 
+    def find_films_to_filter(self, min_number_of_films):
+        indexes_delete = []
+        for j in xrange(self.rating_matrix.shape[1]):
+            number_of_films = 0
+            for i in xrange(self.rating_matrix.shape[0]):
+                if self.rating_matrix[i, j] > 0:
+                    number_of_films += 1
+            if number_of_films < min_number_of_films:
+                indexes_delete.append(j)
+        return indexes_delete
+
+    def filter_films(self, min_number_of_films):
+        bound = self.rating_matrix.shape[1]
+        j = 0
+        while j < bound:
+            number_of_films = 0
+            for i in xrange(self.rating_matrix.shape[0]):
+                if self.rating_matrix[i, j] > 0:
+                    number_of_films += 1
+            if number_of_films < min_number_of_films:
+                self.delete_column(j)
+                bound -= 1
+            else:
+                j += 1
 
 class MatrixCreator:
     def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):
@@ -191,3 +215,7 @@ if __name__ == "__main__":
 
     rm = RatingMatrix(set([u1, u2, u3, u4]))
     print rm.get_rating_matrix()
+    print rm.find_films_to_filter(3)
+    rm.filter_films(3)
+    print rm.get_rating_matrix()
+

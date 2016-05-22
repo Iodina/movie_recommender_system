@@ -3,6 +3,7 @@
 from recsys.algorithm.factorize import SVD
 import rating_matrix as rm
 import operator
+import numpy as np
 
 __author__ = 'mishashamen'
 
@@ -35,7 +36,7 @@ class Recommender:
             self.__compute_matrix(K)
 
         prediction = {}
-        np_matrix = self.matrix.get_rate_matrix()
+        np_matrix = self.matrix.get_rating_matrix()
         for index in xrange(np_matrix.shape[1]):
             rate = self.svd.predict(user_index, index,
                                     MIN_VALUE=min_rate,
@@ -45,7 +46,7 @@ class Recommender:
 
         if top:
             prediction = sorted(prediction.items(), key=operator.itemgetter(1))
-            prediction = prediction[-top:]
+            prediction = list(reversed(prediction[-top:]))
 
         return prediction
 
@@ -73,47 +74,18 @@ class Recommender:
         self.svd.load_data(self.datafile_path, sep=' ', format={'col': 1, 'row': 0, 'value': 2, 'ids': int})
         self.svd.compute(K, min_values, pre_normalize, mean_center, post_normalize, savefile=None)
 
+
 if __name__ == "__main__":
     recommender = Recommender()
-    recommender.load_web_data('dataset',
-                              [{"Легенда": 9, 
-                                "Пираты Карибского моря": 10, 
-                                "Дневники вампира": 5,
-                                "Зверополис": 9,
-                                "Эпоха дракона: Искупление": 6,
-                                "Запах женщины": 8},
-                                {"Эпоха дракона: Искупление": 3,
-                                "Машинист": 8, 
-                                "Зверополис": 8, 
-                                "Илья Муромец":10, 
-                                "Иван Васильевич меняет профессию": 10, 
-                                "Эверест": 6 },
-                                {"Запах женщины": 10,
-                                "Мальчики-налетчики": 2,
-                                "Тренер Картер": 8,
-                                "Заплати другому": 10,
-                                "Живая сталь": 9,
-                                "Одержимость": 5},
-                                {"12 разгневанных мужчин": 10,
-                                "Омерзительная восьмерка": 6,
-                                "Гран Торино": 8,
-                                "Игры разума": 9,
-                                "В джазе только девушки": 10,
-                                "Пролетая над гнездом кукушки": 9,
-                                "Одержимость": 9,
-                                "Назад в будущее": 8,
-                                "Титаник": 7},
-                                {"Жестокие игры": 10,
-                                "Двое: Я и моя тень": 9,
-                                "Омерзительная восьмерка": 8,
-                                "Зверополис": 10,
-                                "Игры разума": 9,
-                                "На гребне волны": 2, 
-                                "Пролетая над гнездом кукушки": 5,
-                                "Титаник": 9}
-                                ],
-                              100, 0)
+    # recommender.load_web_data('dataset',
+    #                           [{'Запах женщины': 9, 'The Usual Suspects': 8, 'The Departed': 8,
+    #                             'Тутси': 7, 'Выпускник': 10, 'Залечь на дно в Брюгге': 4, 'Евротур': 7,
+    #                             'Goodfellas': 6, 'Донни Браско': 8, 'Амели': 3, 'Идиократия': 7}],
+    #                           100, 0, 10, 10)
+    recommender.load_local_data('dataset', K=100, min_values=0)
+    m = recommender.matrix.get_rating_matrix()
+    print recommender.matrix.find_films_to_filter(2)
+    print m.shape
+    recommender.matrix.filter_films(2)
 
-    # for film, rate in output_result(rate_matrix, 'scent_of_women').iteritems():
-    #     if rate > 9:
-    #         print film.get_title()
+
