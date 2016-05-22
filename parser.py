@@ -4,7 +4,6 @@ import re
 import urllib2
 from urllib2 import Request
 from bs4 import BeautifulSoup
-from selenium import webdriver
 
 __author__ = 'mishashamen'
 
@@ -39,8 +38,7 @@ class Film:
                  director=None,
                  genre=None,
                  time=None,
-                 mean_rating=None,
-                 comments=None):
+                 mean_rating=None):
         self.__parser = parser
         self.__id = int(id)
         self.__title = title
@@ -50,7 +48,6 @@ class Film:
         self.__genre = genre
         self.__time = time
         self.__mean_rating = mean_rating
-        self.__comments = comments
 
     def __eq__(self, other):
         return self.get_id() == other.get_id()
@@ -66,9 +63,6 @@ class Film:
             self.__parser.fill_film(self)
         except Exception as e:
             print e
-
-    def lazy_comments(self):
-        return self.__parser.fill_comments(self)
 
     def get_id(self):
         return self.__id
@@ -129,15 +123,6 @@ class Film:
     def set_mean_rating(self, mean_rating):
         self.__mean_rating = mean_rating
 
-    def get_comments(self):
-        if self.__comments is None:
-            return self.lazy_comments()
-        else:
-            return self.__comments
-
-    def set_comments(self, comments):
-        self.__comments = comments
-
 
 class User:
     __slots__ = ['__parser', '__id', '__films_with_rate']
@@ -188,7 +173,6 @@ class RequestSender:
     proxies = ['http://www.google.ie/gwt/x?u=',
                'http://www.google.ua/gwt/x?u=',
                'http://www.google.com/gwt/x?u=']
-    browser = webdriver.Firefox()
 
     def get_html_page(self, url):
         for proxy in self.proxies:
@@ -211,17 +195,6 @@ class RequestSender:
 
         return ""
 
-    def get_html_page_selenium(self, url):
-        for proxy in self.proxies:
-            try:
-                self.browser.get(url)
-                page = self.browser.page_source
-                if not self.is_bad_page(page):
-                    return page
-            except Exception as e:
-                print e
-
-        return ""
 
     def is_bad_page(self, page):
         if self.ban_request_message in page:
@@ -300,16 +273,6 @@ class Parser:
             index += 1
 
         return users
-
-    def fill_comments(self, film):
-        comments = []
-        film_url = self.film_comments_query.format(film.get_id())
-        film_page = self.rs.get_html_page_selenium(film_url)
-        soup = BeautifulSoup(film_page, 'html.parser')
-        for comment in soup.find_all('span', {'itemprop': 'reviewBody'}):
-            comments.append(comment.text)
-
-        return comments
 
     def fill_film(self, film):
         """
@@ -395,8 +358,8 @@ if __name__ == "__main__":
     p = Parser(rs)
     film_id = 839818
     f1 = Film(p, film_id)
-    f1.get_comments()
+
     film_id = 4871
     f2 = Film(p, film_id)
-    f2.get_comments()
+
 
