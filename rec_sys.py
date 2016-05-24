@@ -12,6 +12,7 @@ class Recommender:
         self.svd = SVD()
         self.matrix = None
         self.datafile_path = None
+        self.predict_matrix = None
 
     def load_web_data(self, filename, film_names_with_rate_list, K, min_values,
                   MAX_COUNT_USER_FILMS=None, MAX_COUNT_FILM_USERS=None):
@@ -25,6 +26,19 @@ class Recommender:
         self.matrix = rm.MatrixCreator().restore_from_file(filename)
         self.datafile_path = filename
         self.__compute_matrix(K, min_values)
+
+    def get_predictions_for_all_users(self, min_rate=1, max_rate=10, top = None, K=None, min_values=0):
+        if K:
+            self.__compute_matrix(K)
+
+        self.predict_matrix = np.zeros((len(self.matrix.users_indexes_map), len(self.matrix.films_indexes_map)))
+        for user in self.matrix.users_indexes_map.keys():
+            for film in self.matrix.films_indexes_map.keys():
+                user_index = self.matrix.users_indexes_map[user]
+                film_index = self.matrix.films_indexes_map[film]
+                self.predict_matrix[user_index][film_index] = self.svd.predict(user_index, film_index, MIN_VALUE=min_rate, MAX_VALUE=max_rate)
+        return self.predict_matrix
+
 
     def predict_for_user(self, user_index, min_rate=1, max_rate=10, top = None, K=None, min_values=None):
         """
@@ -75,6 +89,7 @@ class Recommender:
         self.svd.compute(K, min_values, pre_normalize, mean_center, post_normalize, savefile=None)
 
 
+
 if __name__ == "__main__":
     recommender = Recommender()
     # recommender.load_web_data('dataset',
@@ -82,10 +97,10 @@ if __name__ == "__main__":
     #                             'Тутси': 7, 'Выпускник': 10, 'Залечь на дно в Брюгге': 4, 'Евротур': 7,
     #                             'Goodfellas': 6, 'Донни Браско': 8, 'Амели': 3, 'Идиократия': 7}],
     #                           100, 0, 10, 10)
+
     recommender.load_local_data('dataset', K=100, min_values=0)
     m = recommender.matrix.get_rating_matrix()
-    print recommender.matrix.find_films_to_filter(2)
-    print m.shape
-    recommender.matrix.filter_films(2)
+
+    m1 = recommender.get_predictions_for_all_users()
 
 
