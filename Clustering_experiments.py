@@ -5,19 +5,14 @@ import numpy as np
 
 if __name__ == "__main__":
     recommender = Recommender()
-    recommender.load_local_data('group_dataset', K=100, min_values=0)
-    raiting_matrix = recommender.matrix.get_rating_matrix()
-
-    from guppy import hpy
-    h = hpy()
-    print h.heap()
-
+    recommender.load_local_data('dataset_10', K=100, min_values=0)
+    #raiting_matrix = recommender.matrix.get_rating_matrix()
     predictred_raiting_matrix = recommender.get_predictions_for_all_users()
     # np.savetxt("prediction.txt", m1)
 
 
     print recommender.matrix.indexes_with_fake_user_ids.keys() # 109 - fake user id
-
+    """
     for n in range(2, 10):
         print "Experiment: k-means, %s number of clusters "%(n, )
         k_means = KMeans(n_clusters=n)
@@ -27,7 +22,7 @@ if __name__ == "__main__":
         print len(k_means.labels_), k_means.labels_
         print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     print '____________________________________________________'
-
+  
 
     # print "centers: %s" %(k_means.cluster_centers_,)
     # np.savetxt("result1", k_means.cluster_centers_)
@@ -35,7 +30,7 @@ if __name__ == "__main__":
     # print "inertia: %s" %(k_means..inertia_,)
 
 
-
+    """
     mean_shift = MeanShift(cluster_all=False)
     mean_shift.fit(predictred_raiting_matrix)
     labels = mean_shift.labels_
@@ -48,7 +43,7 @@ if __name__ == "__main__":
     print '____________________________________________________'
 
 
-
+    """
     def pearson_affinity(M):
         return 1 - np.array([[pearsonr(a, b)[0] for a in M] for b in M])
 
@@ -61,3 +56,4 @@ if __name__ == "__main__":
         print cluster.labels_
         print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     print '____________________________________________________'
+    """

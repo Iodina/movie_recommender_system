@@ -31,7 +31,7 @@ class Recommender:
         if K:
             self.__compute_matrix(K)
 
-        self.predict_matrix = np.zeros((len(self.matrix.users_indexes_map), len(self.matrix.films_indexes_map)))
+        self.predict_matrix = np.empty([len(self.matrix.users_indexes_map), len(self.matrix.films_indexes_map)])
         for user in self.matrix.users_indexes_map.keys():
             for film in self.matrix.films_indexes_map.keys():
                 user_index = self.matrix.users_indexes_map[user]
