@@ -7,9 +7,10 @@ if __name__ == "__main__":
     recommender = Recommender()
     recommender.load_local_data('dataset_10', K=100, min_values=0)
     #raiting_matrix = recommender.matrix.get_rating_matrix()
-    predictred_raiting_matrix = recommender.get_predictions_for_all_users()
-    # np.savetxt("prediction.txt", m1)
 
+    ### Fucking shit
+
+    predictred_raiting_matrix = recommender.get_predictions_for_all_users()
 
     print recommender.matrix.indexes_with_fake_user_ids.keys() # 109 - fake user id
     """
@@ -31,6 +32,7 @@ if __name__ == "__main__":
 
 
     """
+
     mean_shift = MeanShift(cluster_all=False)
     mean_shift.fit(predictred_raiting_matrix)
     labels = mean_shift.labels_
