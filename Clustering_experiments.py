@@ -5,12 +5,16 @@ import numpy as np
 
 if __name__ == "__main__":
     recommender = Recommender()
-    recommender.load_local_data('group_dataset', K=100, min_values=0)
+
+
+    ### Fucking shit
+
+    recommender.load_local_data('dataset', K=100, min_values=0)
     raiting_matrix = recommender.matrix.get_rating_matrix()
 
-    from guppy import hpy
-    h = hpy()
-    print h.heap()
+    # from guppy import hpy
+    # h = hpy()
+    # print h.heap()
 
     predictred_raiting_matrix = recommender.get_predictions_for_all_users()
     # np.savetxt("prediction.txt", m1)
@@ -36,7 +40,7 @@ if __name__ == "__main__":
 
 
 
-    mean_shift = MeanShift(cluster_all=False)
+    mean_shift = MeanShift(cluster_all=True)
     mean_shift.fit(predictred_raiting_matrix)
     labels = mean_shift.labels_
     cluster_centers = mean_shift.cluster_centers_
