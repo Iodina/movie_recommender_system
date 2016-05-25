@@ -68,6 +68,21 @@ class Recommender:
             predictions.append(prediction)
 
         return predictions
+        
+    def predicted_rating_submatrix(self, user_indexes):
+        predicted = np.empty((1, self.matrix.rating_matrix.shape[1]), int)
+        for index in user_indexes:
+            row = []
+            for film_index in xrange(self.matrix.rating_matrix.shape[1]):
+                row.append(self.svd.predict(index, film_index,
+                                    MIN_VALUE=1,
+                                    MAX_VALUE=10))
+
+            predicted = np.append(predicted, [row], axis=0)
+        return predicted[1:]
+
+    def predicted_rating_submatrix_for_fake(self):
+        return self.predicted_rating_submatrix(self.matrix.indexes_with_fake_user_ids.keys())
 
     def __compute_matrix(self, K,
                          min_values=0,
