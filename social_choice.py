@@ -1,52 +1,201 @@
+
+# -*- coding: utf-8 -*-
 import numpy as np
 from rec_sys import Recommender
+import operator
 
-        # self.predictions = [
-        #     {'i1': 10, 'i2': 4, 'i3': 3, 'i4': 6, 'i5': 10,
-        #      'i6': 9, 'i7': 6, 'i8': 8, 'i9': 10, 'i10': 8},
-        #     {'i1': 1, 'i2': 9, 'i3': 8, 'i4': 9, 'i5': 7,
-        #      'i6': 9, 'i7': 6, 'i8': 9, 'i9': 3, 'i10': 8},
-        #     {'i1': 10, 'i2': 5, 'i3': 2, 'i4': 7, 'i5': 9,
-        #      'i6': 8, 'i7': 5, 'i8': 6, 'i9': 7, 'i10': 6}]
+# predictions = [
+#             {'i1': 10, 'i2': 4, 'i3': 3, 'i4': 6, 'i5': 10,
+#              'i6': 9, 'i7': 6, 'i8': 8, 'i9': 10, 'i10': 8},
+#             {'i1': 1, 'i2': 9, 'i3': 8, 'i4': 9, 'i5': 7,
+#              'i6': 9, 'i7': 6, 'i8': 9, 'i9': 3, 'i10': 8},
+#             {'i1': 10, 'i2': 5, 'i3': 2, 'i4': 7, 'i5': 9,
+#              'i6': 8, 'i7': 5, 'i8': 6, 'i9': 7, 'i10': 6}]
+
+# predictions = np.array(([10, 4, 3, 6, 10, 9, 6, 8, 10, 8],
+#             [1, 9, 8, 9, 7, 9, 6, 9, 3, 8],
+#             [10, 5, 2, 7, 9, 8, 5, 6, 7, 6]))
+# print predictions
 
 class GroupRecommender(Recommender):
     def __init__(self, datafile_path=None):
         Recommender.__init__(self, datafile_path=datafile_path)
-        self.predictions = np.array([1,3,4,5],[4,2,1,2])
-        self.aggregation_function = {'additive': self.additive, 'multiplicative': self.multiplicative}
+        self.predictions = None
+        self.aggregation_function = {'additive': self.additive,
+                                     'multiplicative': self.multiplicative,
+                                     'average': self.average,
+                                     'average_without_misery': self.average_without_misery,
+                                     'least_misery': self.least_misery,
+                                     'most_pleasure': self.most_pleasure,
+                                     'fairness': self.fairness,
+                                     'borda': self.borda
+                                     }
 
     def _norm(self, vector):
         return np.linalg.norm(vector)
 
-    def predict_for_group(self, aggregation='additive', parameters=None):
+    def _get_top_list(self, res_vector, top=None, relative=True):
+        """
+        Determine top `top` films recommended for a Group
+        by Group Preferences vector
+        :param res_vector: 1D np.array with Group Preferences
+        :param top: int number of top movies to recommend
+        :param relative: if scores are relative or absolute (weighted)
+        :return: [('title' str, score int), (,), (,) ...]
+        recommendation for the group
+        """
+        if not top:
+            top = 10
+        prediction = {}
+        for index in xrange(len(res_vector)):
+            film = self.matrix.indexes_films_map[index]
+            prediction[film] = res_vector[index]
+
+        prediction = sorted(prediction.items(), key=operator.itemgetter(1))
+        prediction = reversed(prediction[-top:])
+        titled_prediction = []
+
+        if relative:
+            k = 0
+            for i in prediction:
+                titled_prediction.append((i[0].get_title(), top-k))
+                k += 1
+        else:
+            for i in prediction:
+                if i[1]:
+                    titled_prediction.append((i[0].get_title(), i[1]))
+        return titled_prediction
+
+
+    def predict_for_group(self, aggregation='additive', **kwargs):
+        """
+        Return Group Recommendation
+        :param aggregation: aggregation function
+        :param kwargs: threshold=3, top=10, weights=[1, 3, 5] and others
+        :return:
+        """
         self.predictions = self.predicted_rating_submatrix_for_fake()
         aggregate = self.aggregation_function.get(aggregation)
-        return aggregate(self.predictions, parameters)
+        return aggregate(**kwargs)
 
-    def additive(self, parameters=None):
-        sum_array = self.predictions.sum(axis=0)
-        return np.multiply(sum_array, 1/self._norm(sum_array))
+    def additive(self, **kwargs):
+        """Calculate Group preference with additive strategy
+        :param top: int
+        :return np array in relative values
+        """
+        top = kwargs.get('top')
+        res_vector = self.predictions.sum(axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
-    def multiplicative(self, parameters=None):
-        prod_array = self.predictions.prod(axis=0)
-        return np.multiply(prod_array, 1/self._norm(prod_array))
+    def multiplicative(self, **kwargs):
+        """Calculate Group preference with multiplicative strategy
+        :param top: int
+        :return np array in relative values
+        """
+        top = kwargs.get('top')
+        res_vector = self.predictions.prod(axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
-    def average(self, parameters=None):
-        sum_array = self.predictions.sum(axis=0)
-        length = len(sum_array)
-        return np.multiply(sum_array, 1./length)
+    def average(self, **kwargs):
+        """
+        Calculate Group preference with average strategy
+        :param top: int
+        :return np array in real values
+        """
+        top = kwargs.get('top')
+        res_vector = np.average(self.predictions, axis=0)
+        return self._get_top_list(res_vector, top=top, relative=False)
 
-    def average_without_misery(self, parameters={'threshold': 3}):
+    def average_without_misery(self, **kwargs):
+        """
+        Calculate Group preference with average without misery strategy
+        :param top: int
+        :param threshold: int
+        :return np array in real values
+        """
+        top = kwargs.get('top')
+        threshold = kwargs.get('threshold')
         predict = self.predictions
-        threshold = parameters.get('threshold')
-        for item in self.predictions.swapaxes(0,1):
-            list_of_indx = [i for i in item if i < threshold]
-            np.delete(predict, obj=list_of_indx, axis=1)
-        sum_array = predict.sum(axis=0)
+        mask = (predict < threshold)
+        idx = mask.any(axis=0)
+        predict[:, idx] = 0
+        res_vector = np.average(predict, axis=0)
+        return self._get_top_list(res_vector, top=top, relative=False)
 
-        return np.multiply(sum_array, 1/self._norm(sum_array)
+    def least_misery(self, **kwargs):
+        """
+        Calculate Group preference with least misery strategy
+        :param kwargs: top: int
+        :return: np array in relative values
+        """
+        top = kwargs.get('top')
+        res_vector = np.amin(self.predictions, axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
+
+    def most_pleasure(self, **kwargs):
+        """
+        Calculate Group preference with most pleasure strategy
+        :param kwargs: top: int
+        :return: np array in relative values
+        """
+        top = kwargs.get('top')
+        res_vector = np.amax(self.predictions, axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
+
+    def fairness(self, **kwargs):
+        """
+        Calculate Group preference with fairness strategy
+        :param kwargs: l: int number of top user preferences
+        :return: np array in relative values
+        """
+        l = kwargs.get('l')
+        top = kwargs.get('top')
+        k = self.predictions.shape[1]
+        res_vector = np.zeros((self.predictions.shape[1]))
+        while k > 0:
+            for u in range(self.predictions.shape[0]):
+                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]   # list of indexes of top l scores
+                min_items = []  # indexes
+                for item_index in list_indexes_top:
+                    min_items.append(np.argmin(self.predictions[:, item_index]))
+                a = [(self.predictions[i][j], i, j) for i, j in zip(min_items, list_indexes_top) if i != u]
+                if a:
+                    max_item = max(a)
+                    res_vector[max_item[2]] = k
+                    self.predictions[:, max_item[2]] = 0
+                    k -= 1
+                    if k == 0:
+                        break
+        return self._get_top_list(res_vector, top=top, relative=True)
+
+    def borda(self, **kwargs):
+        """
+        Calculate Group preference with borda count strategy
+        :return:
+        """
+        top = kwargs.get('top')
+        self.predictions = self.predictions.astype(float)
+        predict = np.copy(self.predictions)
+        for row in range(predict.shape[0]):
+            k = 0
+            while np.where(predict[row] == 100)[0].shape[0] != predict.shape[1]:
+                # find all indexes of minimum element
+                arr_indx_min = np.where(predict[row] == predict[row].min())
+                num_of_same = arr_indx_min[0].shape[0]
+                for j in arr_indx_min[0]:
+                    predict[row][j] = 100
+                    borda = (((num_of_same+k+1) * (num_of_same+k) - k*(k+1)) / 2. ) / float(num_of_same) - 1
+                    self.predictions[row][j] = borda
+                k += num_of_same
+        res_vector = self.predictions.sum(axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
+
 
 
 if __name__ == "__main__":
-    gr = GroupRecommender('dataset')
-    gr.load_local_data('dataset', 100, 0)
+    gr = GroupRecommender('test_dataset')
+    gr.load_local_data('test_dataset', 100, 0)
+    result = gr.predict_for_group(aggregation='borda', threshold=3, top=10, l=3)
+    for i in result:
+        print i[0], i[1], "\n"
+    # print result

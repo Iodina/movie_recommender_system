@@ -293,7 +293,7 @@ class Parser:
         return film
 
     def set_film_title(self, film, soup):
-        film.set_title(soup.h1.text)
+        film.set_title(soup.title.text)
 
     def set_film_year(self, film, cell_content):
         film.set_year(int(cell_content.a.text));
