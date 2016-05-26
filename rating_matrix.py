@@ -175,6 +175,10 @@ class MatrixCreator:
                 rm.indexes_films_map[int(index)] = prs.Film(self.parser, id)
                 rm.films_indexes_map[rm.indexes_films_map[int(index)]] = int(index)
 
+
+        ## Fucking Shit
+
+
         rm.rating_matrix = np.zeros((len(rm.users_indexes_map), len(rm.films_indexes_map)))
 
         with open(file_name, 'rb') as my_file:

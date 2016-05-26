@@ -38,7 +38,8 @@ class Film:
                  director=None,
                  genre=None,
                  time=None,
-                 mean_rating=None,):
+                 mean_rating=None):
+
         self.__parser = parser
         self.__id = int(id)
         self.__title = title
@@ -194,6 +195,7 @@ class RequestSender:
                 print e
 
         return ""
+
 
     def is_bad_page(self, page):
         if self.ban_request_message in page:
@@ -357,8 +359,8 @@ if __name__ == "__main__":
     p = Parser(rs)
     film_id = 839818
     f1 = Film(p, film_id)
-    f1.get_comments()
+
     film_id = 4871
     f2 = Film(p, film_id)
-    f2.get_comments()
+
 
