@@ -1,8 +1,8 @@
-
 # -*- coding: utf-8 -*-
 import numpy as np
 from rec_sys import Recommender
 import operator
+
 
 # predictions = [
 #             {'i1': 10, 'i2': 4, 'i3': 3, 'i4': 6, 'i5': 10,
@@ -28,7 +28,10 @@ class GroupRecommender(Recommender):
                                      'least_misery': self.least_misery,
                                      'most_pleasure': self.most_pleasure,
                                      'fairness': self.fairness,
-                                     'borda': self.borda
+                                     'borda': self.borda,
+                                     'copeland': self.copeland,
+                                     'plurality_voting': self.plurality_voting,
+                                     'approval_voting': self.approval_voting
                                      }
 
     def _norm(self, vector):
@@ -58,14 +61,13 @@ class GroupRecommender(Recommender):
         if relative:
             k = 0
             for i in prediction:
-                titled_prediction.append((i[0].get_title(), top-k))
+                titled_prediction.append((i[0].get_title(), top - k))
                 k += 1
         else:
             for i in prediction:
                 if i[1]:
                     titled_prediction.append((i[0].get_title(), i[1]))
         return titled_prediction
-
 
     def predict_for_group(self, aggregation='additive', **kwargs):
         """
@@ -154,11 +156,12 @@ class GroupRecommender(Recommender):
         res_vector = np.zeros((self.predictions.shape[1]))
         while k > 0:
             for u in range(self.predictions.shape[0]):
-                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]   # list of indexes of top l scores
+                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
                 min_items = []  # indexes
                 for item_index in list_indexes_top:
                     min_items.append(np.argmin(self.predictions[:, item_index]))
-                a = [(self.predictions[i][j], i, j) for i, j in zip(min_items, list_indexes_top) if i != u]
+                a = [(self.predictions[i][j], i, j) for i, j in
+                     zip(min_items, list_indexes_top) if i != u]
                 if a:
                     max_item = max(a)
                     res_vector[max_item[2]] = k
@@ -168,9 +171,33 @@ class GroupRecommender(Recommender):
                         break
         return self._get_top_list(res_vector, top=top, relative=True)
 
+    def plurality_voting(self, **kwargs):
+        """
+        Calculate Group preference with plurality voting strategy
+        :param kwargs: l: int number of top user preferences
+        :return: np array in relative values
+        """
+        l = kwargs.get('l')
+        top = kwargs.get('top')
+        k = self.predictions.shape[1]
+        res_vector = np.zeros((self.predictions.shape[1]))
+        while k > 0:
+            for u in range(self.predictions.shape[0]):
+                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
+                sum_items = []  # sum
+                for item_index in list_indexes_top:
+                    sum_items.append((sum(self.predictions[:, item_index]) - self.predictions[u][item_index], item_index))
+                indx_max_sum = max(sum_items)[1]
+                res_vector[indx_max_sum] = k
+                self.predictions[:, indx_max_sum] = 0
+                k -= 1
+                if k == 0:
+                    break
+        return self._get_top_list(res_vector, top=top, relative=True)
+
     def borda(self, **kwargs):
         """
-        Calculate Group preference with borda count strategy
+        Calculate Group preference with Borda count strategy
         :return:
         """
         top = kwargs.get('top')
@@ -184,18 +211,66 @@ class GroupRecommender(Recommender):
                 num_of_same = arr_indx_min[0].shape[0]
                 for j in arr_indx_min[0]:
                     predict[row][j] = 100
-                    borda = (((num_of_same+k+1) * (num_of_same+k) - k*(k+1)) / 2. ) / float(num_of_same) - 1
+                    borda = (((num_of_same + k + 1) * (num_of_same + k) - k * (
+                    k + 1)) / 2.) / float(num_of_same) - 1
                     self.predictions[row][j] = borda
                 k += num_of_same
         res_vector = self.predictions.sum(axis=0)
         return self._get_top_list(res_vector, top=top, relative=True)
 
+    def copeland(self, **kwargs):
+        """
+        Calculate Group preference with Copeland strategy
+        :return:
+        """
+        def wins(k, t):
+            B = self.predictions.swapaxes(0, 1)
+            return sum(np.greater(B[t], B[k]))
+
+        def looses(k, t):
+            B = self.predictions.swapaxes(0, 1)
+            return sum(np.less(B[t], B[k]))
+
+        top = kwargs.get('top')
+        num_of_items = self.predictions.shape[1]
+        A = np.zeros((num_of_items, num_of_items))
+        for i in range(num_of_items):
+            for j in range(i, num_of_items):
+                if i == j or wins(i, j) == looses(i, j):
+                    A[i, j] = A[j, i] = 0
+                elif wins(i, j) > looses(i, j):
+                    A[i, j] = 1
+                    A[j, i] = -1
+                elif wins(i, j) < looses(i, j):
+                    A[i, j] = -1
+                    A[j, i] = 1
+        res_vector = A.sum(axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
+
+    def approval_voting(self, **kwargs):
+        """
+        Calculate Group preference with approval voting strategy
+        :param kwargs: threshold ind
+        :return:
+        """
+        def approved(k, t):
+            return self.predictions[k][t] > threshold
+
+        top = kwargs.get('top')
+        threshold = kwargs.get('threshold')
+        A = np.zeros(self.predictions.shape)
+        for i in range(self.predictions.shape[0]):
+            for j in range(self.predictions.shape[1]):
+                if approved(i, j):
+                    A[i, j] = 1
+        res_vector = A.sum(axis=0)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
 
 if __name__ == "__main__":
     gr = GroupRecommender('test_dataset')
     gr.load_local_data('test_dataset', 100, 0)
-    result = gr.predict_for_group(aggregation='borda', threshold=3, top=10, l=3)
+    result = gr.predict_for_group(aggregation='approval_voting', threshold=5, top=10, l=3)
     for i in result:
         print i[0], i[1], "\n"
-    # print result
+        # print result
