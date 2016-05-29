@@ -82,8 +82,9 @@ class Recommender:
             predictions.append(prediction)
 
         return predictions
-        
+
     def predicted_rating_submatrix(self, user_indexes):
+        self.__compute_matrix(100)
         predicted = np.empty((1, self.matrix.rating_matrix.shape[1]), int)
         for index in user_indexes:
             row = []

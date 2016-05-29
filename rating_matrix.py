@@ -1,3 +1,4 @@
+import time
 import parser as prs
 import numpy as np
 import csv
@@ -137,6 +138,31 @@ class RatingMatrix:
                 bound -= 1
             else:
                 j += 1
+
+    def add_row(self, rates, filename):
+        self.rating_matrix = np.append(self.rating_matrix, [rates], axis=0)
+
+        user_index = len(self.indexes_users_map)
+        user_id = min(self.indexes_with_fake_user_ids.values()) - 1
+        with open(filename+'_user_map', 'ab') as my_file:
+            wr = csv.writer(my_file, delimiter=' ')
+            wr.writerow([user_index, user_id])
+
+        user = prs.User(None, user_id)
+        self.indexes_users_map[user_index] = user
+        self.users_indexes_map[user] = user_index
+
+        with open(filename, 'ab') as my_file:
+            wr = csv.writer(my_file, delimiter=' ')
+            film_index = 0
+            for rate in rates:
+                if rate > 0:
+                    user.add_film_with_rate(self.indexes_films_map[film_index],
+                                            rate)
+                    wr.writerow([user_index, film_index, rate])
+                film_index += 1
+
+        return user_index
 
 class MatrixCreator:
     def __init__(self, MAX_COUNT_USER_FILMS = None, MAX_COUNT_FILM_USERS = None):

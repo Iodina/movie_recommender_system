@@ -2,7 +2,9 @@
 import numpy as np
 from rec_sys import Recommender
 import operator
-
+import cProfile
+import math
+import xlwt
 
 # predictions = [
 #             {'i1': 10, 'i2': 4, 'i3': 3, 'i4': 6, 'i5': 10,
@@ -37,7 +39,7 @@ class GroupRecommender(Recommender):
     def _norm(self, vector):
         return np.linalg.norm(vector)
 
-    def _get_top_list(self, res_vector, top=None, relative=True, title=True):
+    def _get_top_list(self, res_vector, top=None, relative=True, title=False):
         """
         Determine top `top` films recommended for a Group
         by Group Preferences vector
@@ -50,6 +52,8 @@ class GroupRecommender(Recommender):
         """
         if not top:
             return res_vector
+
+            # return np.sort(res_vector)
         prediction = {}
         for index in xrange(len(res_vector)):
             film = self.matrix.indexes_films_map[index]
@@ -91,9 +95,19 @@ class GroupRecommender(Recommender):
         :param kwargs:
         :return:
         """
-        # TODO Implement another method
-        # Need to get all fake user's preferences and
-        # combine them into one fat fake user and make prediction for him
+        top = kwargs.get('top')
+        initial_rating = self.initial_rating_submatrix()
+        aggregated_user = np.zeros((initial_rating.shape[1],))
+        for j in range(initial_rating.shape[1]):
+            number = np.count_nonzero(initial_rating[:, j])
+            if number:
+                aggregated_user[j] = float(sum(initial_rating[:, j])) / number
+            else:
+                aggregated_user[j] = 0.
+        indx = self.matrix.add_row(aggregated_user, self.datafile_path)
+        res_vector = self.predicted_rating_submatrix([indx])[0]
+        # self.matrix.delete_row(indx)
+        return self._get_top_list(res_vector, top=top, relative=False)
 
     def additive(self, **kwargs):
         """Calculate Group preference with additive strategy
@@ -102,7 +116,7 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         res_vector = self.predictions.sum(axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
     def multiplicative(self, **kwargs):
         """Calculate Group preference with multiplicative strategy
@@ -111,7 +125,7 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         res_vector = self.predictions.prod(axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
     def average(self, **kwargs):
         """
@@ -121,7 +135,7 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         res_vector = np.average(self.predictions, axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=False)
+        return self._get_top_list(res_vector, top=top, relative=False)
 
     def average_without_misery(self, **kwargs):
         """
@@ -137,7 +151,7 @@ class GroupRecommender(Recommender):
         idx = mask.any(axis=0)
         predict[:, idx] = 0
         res_vector = np.average(predict, axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=False)
+        return self._get_top_list(res_vector, top=top, relative=False)
 
     def least_misery(self, **kwargs):
         """
@@ -147,7 +161,7 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         res_vector = np.amin(self.predictions, axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
     def most_pleasure(self, **kwargs):
         """
@@ -157,8 +171,9 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         res_vector = np.amax(self.predictions, axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
+    # all unique
     def fairness(self, **kwargs):
         """
         Calculate Group preference with fairness strategy
@@ -184,8 +199,9 @@ class GroupRecommender(Recommender):
                     k -= 1
                     if k == 0:
                         break
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
+    # all unique
     def plurality_voting(self, **kwargs):
         """
         Calculate Group preference with plurality voting strategy
@@ -208,7 +224,7 @@ class GroupRecommender(Recommender):
                 k -= 1
                 if k == 0:
                     break
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
     def borda(self, **kwargs):
         """
@@ -231,7 +247,7 @@ class GroupRecommender(Recommender):
                     self.predictions[row][j] = borda
                 k += num_of_same
         res_vector = self.predictions.sum(axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
     def copeland(self, **kwargs):
         """
@@ -262,8 +278,9 @@ class GroupRecommender(Recommender):
                     A[i, j] = -1
                     A[j, i] = 1
         res_vector = A.sum(axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True)
 
+    # TODO Need to check
     def approval_voting(self, **kwargs):
         """
         Calculate Group preference with approval voting strategy
@@ -280,18 +297,73 @@ class GroupRecommender(Recommender):
             for j in range(self.predictions.shape[1]):
                 if approved(i, j):
                     A[i, j] = 1
-        res_vector = A.sum(axis=0)
-        # return self._get_top_list(res_vector, top=top, relative=True)
+        res_vector_1 = A.sum(axis=0)
+        res_vector = np.zeros((self.predictions.shape[1],))
+        # modification
+        for indx in range(self.predictions.shape[1]):
+            res_vector[indx] = res_vector_1[indx] * self.predictions.sum(axis=0)[indx]
+        return self._get_top_list(res_vector, top=top, relative=True)
+
+    def initial_rating_submatrix(self):
+        fake_list = self.matrix.indexes_with_fake_user_ids.keys()
+        i_size = len(fake_list)
+        j_size = self.matrix.rating_matrix.shape[1]
+        initial = np.zeros((i_size, j_size))
+        for i in range(i_size):
+            initial[i, :] = self.matrix.rating_matrix[fake_list[i]]
+        return initial
+
+    def evaluate(self, aggregation="additive", l=3, threshold=5, method='after'):
+        """
+        Return evaluation function value
+        :param aggregation:
+        :return:
+        """
+        def get_predicted_rating_minima(j):
+            """
+            Get minimum rank with similar scores
+            :param j:
+            :return:
+            """
+            sorted_indexes = np.argsort(rating)[::-1]
+            sorted_scores = np.sort(rating)[::-1]
+            rank = np.where(sorted_indexes == j)[0][0]
+            score = sorted_scores[rank]
+            return min(np.where(sorted_scores == score)[0])
+
+        self.predictions = self.predicted_rating_submatrix_for_fake()
+        initial_rating = self.initial_rating_submatrix()
+        if method == 'after':
+            aggregate = self.aggregation_function.get(aggregation)
+            rating = aggregate(threshold=threshold, l=l)
+        elif method == 'before':
+            rating = self.predict_for_group_merging_profiles()
+        num_users = self.predictions.shape[0]
+        num_items = self.predictions.shape[1]
+        aggregate_sum = []
+        for i in range(num_users):
+            num_of_nonzero = np.nonzero(initial_rating[i])[0].shape[0]
+            mean = np.sum(initial_rating[i]) / float(num_of_nonzero)
+            summa = 0
+            for j in range(num_items):
+                if initial_rating[i][j]:
+                    rank_j = get_predicted_rating_minima(j)
+                    summa += float(initial_rating[i][j] - mean) / math.pow(2, rank_j)
+            aggregate_sum.append(summa)
+        eval_mean = float(sum(aggregate_sum)) / num_users
+        eval_misery = min(aggregate_sum)
+        return eval_mean, eval_misery
 
 
 if __name__ == "__main__":
-
-    import cProfile
-
     gr = GroupRecommender('test_dataset')
     gr.load_local_data('test_dataset', 100, 0)
-    cProfile.run("result = gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)")
+    # result = gr.predict_for_group_merging_profiles()
+
+    result = gr.evaluate(aggregation="average", method='before')
+    # gr.predict_for_group_merging_profiles()
+    # cProfile.run("result = gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)")
     # result = gr.predict_for_group_merging_recommendations(aggregation='approval_voting', threshold=5, top=10, l=3)
     # for i in result:
     #     print i[0], i[1], "\n"
-    # print result
+    print result
