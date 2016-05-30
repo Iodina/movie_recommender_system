@@ -8,8 +8,9 @@ def save_to_xls(gr=GroupRecommender(), title='experiment'):
     l = gr.matrix.rating_matrix.shape[1]
     threshold = 3
     for n in range(5):
-
-        ws = wb.add_sheet('Evaluation Experiment %n'%(n,))
+        l = l/100. + n*50
+        threshold += n
+        ws = wb.add_sheet('Evaluation Experiment %s'%(n,))
         ws.write(0, 0, 'Method', style0)
         ws.write(1, 0, 'Merging Recommendations', style0)
 
@@ -17,10 +18,10 @@ def save_to_xls(gr=GroupRecommender(), title='experiment'):
         ws.write(14, 0, 'average')
 
         ws.write(0, 1, 'Parameter', style0)
-        ws.write(5, 1, 'Threshold=%s' % (threshold + n,))
-        ws.write(8, 1, 'L=%s' % (l/100.+ n*50,))
-        ws.write(11, 1, 'L=%s' % (l/100. + n*50,))
-        ws.write(12, 1, 'Threshold=%s' % (threshold + n,))
+        ws.write(5, 1, 'Threshold=%s' % (threshold,))
+        ws.write(8, 1, 'L=%s' % (l,))
+        ws.write(11, 1, 'L=%s' % (l,))
+        ws.write(12, 1, 'Threshold=%s' % (threshold,))
 
         ws.write(0, 2, 'Group Size', style0)
         for i in range(2, 13):
@@ -43,14 +44,12 @@ def save_to_xls(gr=GroupRecommender(), title='experiment'):
 
         for i in range(11):
             aggr_fun_name = gr.aggregation_function.items()[i][0]
+            res = gr.evaluate(aggregation=aggr_fun_name, l=l,
+                            threshold=threshold)
             if not aggr_fun_name == 'copeland':
                 ws.write(i + 2, 0, '%s' % (aggr_fun_name,))
-                ws.write(i + 2, 4, '%s' % (
-                gr.evaluate(aggregation=aggr_fun_name, l=l,
-                            threshold=threshold)[0],))
-                ws.write(i + 2, 5, '%s' % (
-                gr.evaluate(aggregation=aggr_fun_name, l=l,
-                            threshold=threshold)[1],))
+                ws.write(i + 2, 4, '%s' % (res[0],))
+                ws.write(i + 2, 5, '%s' % (res[1],))
 
         eval = gr.evaluate(method='before')
         ws.write(14, 4, '%s'%(eval[0],))
