@@ -39,13 +39,14 @@ def save_to_xls(gr=GroupRecommender(), title='experiment', l=3, threshold=5):
 
     for i in range(11):
         aggr_fun_name = gr.aggregation_function.items()[i][0]
-        ws.write(i + 2, 0, '%s' % (aggr_fun_name,))
-        ws.write(i + 2, 4, '%s' % (
-        gr.evaluate(aggregation=aggr_fun_name, l=l,
-                    threshold=threshold)[0],))
-        ws.write(i + 2, 5, '%s' % (
-        gr.evaluate(aggregation=aggr_fun_name, l=l,
-                    threshold=threshold)[1],))
+        if not aggr_fun_name == 'copeland':
+            ws.write(i + 2, 0, '%s' % (aggr_fun_name,))
+            ws.write(i + 2, 4, '%s' % (
+            gr.evaluate(aggregation=aggr_fun_name, l=l,
+                        threshold=threshold)[0],))
+            ws.write(i + 2, 5, '%s' % (
+            gr.evaluate(aggregation=aggr_fun_name, l=l,
+                        threshold=threshold)[1],))
 
     eval = gr.evaluate(method='before')
     ws.write(14, 4, '%s'%(eval[0],))
@@ -55,6 +56,6 @@ def save_to_xls(gr=GroupRecommender(), title='experiment', l=3, threshold=5):
 
 
 if __name__ == "__main__":
-    gr = GroupRecommender('test_dataset')
-    gr.load_local_data('test_dataset', 100, 0)
-    save_to_xls(gr=gr, title='exp/experiment_full', l=3, threshold=5)
+    gr = GroupRecommender('2_users_dataset')
+    gr.load_local_data('2_users_dataset', 100, 0)
+    save_to_xls(gr=gr, title='exp/experiment_2_l_3_thresh_5', l=3, threshold=5)

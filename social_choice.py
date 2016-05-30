@@ -348,7 +348,8 @@ class GroupRecommender(Recommender):
             for j in range(num_items):
                 if initial_rating[i][j]:
                     rank_j = get_predicted_rating_minima(j)
-                    summa += float(initial_rating[i][j] - mean) / math.pow(2, rank_j)
+                    if rank_j < 1000:
+                        summa += float(initial_rating[i][j] - mean) / math.pow(2, rank_j)
             aggregate_sum.append(summa)
         eval_mean = float(sum(aggregate_sum)) / num_users
         eval_misery = min(aggregate_sum)
