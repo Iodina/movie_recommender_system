@@ -20,9 +20,11 @@ import xlwt
 # print predictions
 
 class GroupRecommender(Recommender):
-    def __init__(self, datafile_path=None):
+    def __init__(self, datafile_path):
         Recommender.__init__(self, datafile_path=datafile_path)
-        self.predictions = None
+        self.load_local_data(datafile_path, 100, 0)
+        self.predictions = self.predicted_rating_submatrix_for_fake()
+        self.initial_rating = self.initial_rating_submatrix()
         self.aggregation_function = {'additive': self.additive,
                                      'multiplicative': self.multiplicative,
                                      'average': self.average,
@@ -85,7 +87,7 @@ class GroupRecommender(Recommender):
         :param kwargs: threshold=3, top=10, weights=[1, 3, 5] and others
         :return:
         """
-        self.predictions = self.predicted_rating_submatrix_for_fake()
+        # self.predictions = self.predicted_rating_submatrix_for_fake()
         aggregate = self.aggregation_function.get(aggregation)
         return aggregate(**kwargs)
 
@@ -96,17 +98,16 @@ class GroupRecommender(Recommender):
         :return:
         """
         top = kwargs.get('top')
-        initial_rating = self.initial_rating_submatrix()
-        aggregated_user = np.zeros((initial_rating.shape[1],))
-        for j in range(initial_rating.shape[1]):
-            number = np.count_nonzero(initial_rating[:, j])
+        # initial_rating = self.initial_rating_submatrix()
+        aggregated_user = np.zeros((self.initial_rating.shape[1],))
+        for j in range(self.initial_rating.shape[1]):
+            number = np.count_nonzero(self.initial_rating[:, j])
             if number:
-                aggregated_user[j] = float(sum(initial_rating[:, j])) / number
+                aggregated_user[j] = float(sum(self.initial_rating[:, j])) / number
             else:
                 aggregated_user[j] = 0.
         indx = self.matrix.add_row(aggregated_user, self.datafile_path)
         res_vector = self.predicted_rating_submatrix([indx])[0]
-        # self.matrix.delete_row(indx)
         return self._get_top_list(res_vector, top=top, relative=False)
 
     def additive(self, **kwargs):
@@ -146,7 +147,7 @@ class GroupRecommender(Recommender):
         """
         top = kwargs.get('top')
         threshold = kwargs.get('threshold')
-        predict = self.predictions
+        predict = np.copy(self.predictions)
         mask = (predict < threshold)
         idx = mask.any(axis=0)
         predict[:, idx] = 0
@@ -182,20 +183,21 @@ class GroupRecommender(Recommender):
         """
         l = kwargs.get('l')
         top = kwargs.get('top')
-        k = self.predictions.shape[1]
-        res_vector = np.zeros((self.predictions.shape[1]))
+        predictions = np.copy(self.predictions)
+        k = predictions.shape[1]
+        res_vector = np.zeros((predictions.shape[1]))
         while k > 0:
-            for u in range(self.predictions.shape[0]):
-                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
+            for u in range(predictions.shape[0]):
+                list_indexes_top = predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
                 min_items = []  # indexes
                 for item_index in list_indexes_top:
-                    min_items.append(np.argmin(self.predictions[:, item_index]))
-                a = [(self.predictions[i][j], i, j) for i, j in
+                    min_items.append(np.argmin(predictions[:, item_index]))
+                a = [(predictions[i][j], i, j) for i, j in
                      zip(min_items, list_indexes_top) if i != u]
                 if a:
                     max_item = max(a)
                     res_vector[max_item[2]] = k
-                    self.predictions[:, max_item[2]] = 0
+                    predictions[:, max_item[2]] = 0
                     k -= 1
                     if k == 0:
                         break
@@ -210,17 +212,18 @@ class GroupRecommender(Recommender):
         """
         l = kwargs.get('l')
         top = kwargs.get('top')
-        k = self.predictions.shape[1]
-        res_vector = np.zeros((self.predictions.shape[1]))
+        predictions = np.copy(self.predictions)
+        k = predictions.shape[1]
+        res_vector = np.zeros((predictions.shape[1]))
         while k > 0:
-            for u in range(self.predictions.shape[0]):
-                list_indexes_top = self.predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
+            for u in range(predictions.shape[0]):
+                list_indexes_top = predictions[u].argsort()[-l:][::-1]  # list of indexes of top l scores
                 sum_items = []  # sum
                 for item_index in list_indexes_top:
-                    sum_items.append((sum(self.predictions[:, item_index]) - self.predictions[u][item_index], item_index))
+                    sum_items.append((sum(predictions[:, item_index]) - predictions[u][item_index], item_index))
                 indx_max_sum = max(sum_items)[1]
                 res_vector[indx_max_sum] = k
-                self.predictions[:, indx_max_sum] = 0
+                predictions[:, indx_max_sum] = 0
                 k -= 1
                 if k == 0:
                     break
@@ -232,7 +235,7 @@ class GroupRecommender(Recommender):
         :return:
         """
         top = kwargs.get('top')
-        self.predictions = self.predictions.astype(float)
+        predictions = np.copy(self.predictions.astype(float))
         predict = np.copy(self.predictions)
         for row in range(predict.shape[0]):
             k = 0
@@ -244,9 +247,9 @@ class GroupRecommender(Recommender):
                     predict[row][j] = 100
                     borda = (((num_of_same + k + 1) * (num_of_same + k) - k * (
                     k + 1)) / 2.) / float(num_of_same) - 1
-                    self.predictions[row][j] = borda
+                    predictions[row][j] = borda
                 k += num_of_same
-        res_vector = self.predictions.sum(axis=0)
+        res_vector = predictions.sum(axis=0)
         return self._get_top_list(res_vector, top=top, relative=True)
 
     def copeland(self, **kwargs):
@@ -255,15 +258,16 @@ class GroupRecommender(Recommender):
         :return:
         """
         def wins(k, t):
-            B = self.predictions.swapaxes(0, 1)
+            B = predictions.swapaxes(0, 1)
             return sum(np.greater(B[t], B[k]))
 
         def looses(k, t):
-            B = self.predictions.swapaxes(0, 1)
+            B = predictions.swapaxes(0, 1)
             return sum(np.less(B[t], B[k]))
 
         top = kwargs.get('top')
-        num_of_items = self.predictions.shape[1]
+        predictions = np.copy(self.predictions)
+        num_of_items = predictions.shape[1]
         A = np.zeros((num_of_items, num_of_items))
         for i in range(num_of_items):
             for j in range(i, num_of_items):
@@ -331,8 +335,8 @@ class GroupRecommender(Recommender):
             score = sorted_scores[rank]
             return min(np.where(sorted_scores == score)[0])
 
-        self.predictions = self.predicted_rating_submatrix_for_fake()
-        initial_rating = self.initial_rating_submatrix()
+        # self.predictions = self.predicted_rating_submatrix_for_fake()
+        # initial_rating = self.initial_rating_submatrix()
         if method == 'after':
             aggregate = self.aggregation_function.get(aggregation)
             rating = aggregate(threshold=threshold, l=l)
@@ -342,14 +346,14 @@ class GroupRecommender(Recommender):
         num_items = self.predictions.shape[1]
         aggregate_sum = []
         for i in range(num_users):
-            num_of_nonzero = np.nonzero(initial_rating[i])[0].shape[0]
-            mean = np.sum(initial_rating[i]) / float(num_of_nonzero)
+            num_of_nonzero = np.nonzero(self.initial_rating[i])[0].shape[0]
+            mean = np.sum(self.initial_rating[i]) / float(num_of_nonzero)
             summa = 0
             for j in range(num_items):
-                if initial_rating[i][j]:
+                if self.initial_rating[i][j]:
                     rank_j = get_predicted_rating_minima(j)
                     if rank_j < 1000:
-                        summa += float(initial_rating[i][j] - mean) / math.pow(2, rank_j)
+                        summa += float(self.initial_rating[i][j] - mean) / math.pow(2, rank_j)
             aggregate_sum.append(summa)
         eval_mean = float(sum(aggregate_sum)) / num_users
         eval_misery = min(aggregate_sum)

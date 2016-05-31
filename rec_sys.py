@@ -14,8 +14,9 @@ class Recommender:
     def __init__(self, datafile_path=None):
         self.svd = SVD()
         self.matrix = None
-        self.datafile_path = None
+        self.datafile_path = datafile_path
         self.predict_matrix = None
+        self.load_local_data(self.datafile_path, 100, 0)
 
     def load_web_data(self, filename, film_names_with_rate_list, K, min_values,
                   MAX_COUNT_USER_FILMS=None, MAX_COUNT_FILM_USERS=None):

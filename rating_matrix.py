@@ -61,7 +61,7 @@ class RatingMatrix:
                 film_index = self.films_indexes_map[film_with_rate['film']]
                 self.rating_matrix[user_index][film_index] = film_with_rate['rate']
 
-    def delete_row(self, index):
+    def delete_row(self, index, datafile_path):
         if self.rating_matrix is not None:
             self.rating_matrix = np.delete(self.rating_matrix, index, 0)
 
@@ -79,6 +79,8 @@ class RatingMatrix:
         if self.indexes_users_map.get(last_element_index):  # if not last row was deleted
             del self.indexes_users_map[last_element_index]
 
+
+
     def delete_column(self, index):
         if self.rating_matrix is not None:
             self.rating_matrix = np.delete(self.rating_matrix, index, 1)
@@ -93,6 +95,7 @@ class RatingMatrix:
         if self.indexes_films_map.get(last_element_index):  # if not last column was deleted
             del self.indexes_films_map[last_element_index]
 
+
     def save_rating_matrix_as_file(self, filename):
         if self.rating_matrix is None:
             self.fill_rating_matrix()
@@ -103,6 +106,7 @@ class RatingMatrix:
                     rate = self.rating_matrix[user_index][film_index]
                     if rate != 0.:
                         wr.writerow([user_index, film_index, rate])
+
 
         with open(filename+'_user_map', 'wb') as my_file:
             wr = csv.writer(my_file, delimiter=' ')
