@@ -151,17 +151,29 @@ class Recommender:
 
 if __name__ == "__main__":
 
-    recommender = Recommender()
+    # recommender = Recommender()
     # recommender.load_web_data('dataset',
     #                           [{'Запах женщины': 9, 'The Usual Suspects': 8, 'The Departed': 8,
     #                             'Тутси': 7, 'Выпускник': 10, 'Залечь на дно в Брюгге': 4, 'Евротур': 7,
     #                             'Goodfellas': 6, 'Донни Браско': 8, 'Амели': 3, 'Идиократия': 7}],
     #                           100, 0, 10, 10)
 
-    recommender.load_local_data('dataset', K=100, min_values=0)
-    m = recommender.matrix.get_rating_matrix()
+    # recommender.load_local_data('dataset', K=100, min_values=0)
+    # m = recommender.matrix.get_rating_matrix()
+    #
+    # m1 = recommender.get_predictions_for_all_users()
 
-    m1 = recommender.get_predictions_for_all_users()
+
+    from recsys.algorithm.factorize import SVDNeighbourhood
+
+    svd = SVDNeighbourhood()
+    svd.load_data('test_dataset', sep=' ', format={'col': 1, 'row': 0, 'value': 2, 'ids': int})
+    svd.compute(100, 0)
+    print svd.predict(108, 698)
+
+    # svd.load_data(filename=sys.argv[1], sep='::', format={'col':0, 'row':1, 'value':2, 'ids': int})
+    # K=100
+    # svd.compute(k=K, min_values=5, pre_normalize=None, mean_center=True, post_normalize=True)
 
 
 

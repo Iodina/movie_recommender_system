@@ -44,6 +44,7 @@ def save_to_xls(gr=None, title='experiment'):
         ws.write(0, 4, 'Ev average', style0)
         ws.write(0, 5, 'Ev misery', style0)
 
+
         for i in range(11):
             aggr_fun_name = gr.aggregation_function.items()[i][0]
             if not aggr_fun_name == 'copeland':
@@ -56,18 +57,20 @@ def save_to_xls(gr=None, title='experiment'):
                 ws.write(i+2, 1, 'L=%s' % (l,))
             if aggr_fun_name in ['average_without_misery', 'approval_voting']:
                 ws.write(i+2, 1, 'Threshold=%s' % (threshold,))
+            # print "strategy:{2},mean: {0},min: {1}".format(res[0], res[1],
+            #                                                aggr_fun_name)
 
-    eval = gr.evaluate(method='before')
-    ws.write(14, 4, '%s'%(eval[0],))
-    ws.write(14, 5, '%s'%(eval[0],))
-
-    wb.save('%s.xls' % (title,))
+    # eval = gr.evaluate(method='before')
+    # ws.write(14, 4, '%s'%(eval[0],))
+    # ws.write(14, 5, '%s'%(eval[0],))
+    # wb.save('%s.xls' % (title,))
 
 
 if __name__ == "__main__":
-    gr = GroupRecommender('2_users_dataset')
-    save_to_xls(gr=gr, title='exp/experiment_3_full')
-
+    # # gr = GroupRecommender('2_users_dataset')
+    # gr = GroupRecommender('2_users_dataset_3')
+    # save_to_xls(gr=gr, title='exp/experiment_3_full')
+    #
     gr = GroupRecommender('2_users_dataset_3')
     save_to_xls(gr=gr, title='exp/experiment_3_filtered')
 
