@@ -122,18 +122,18 @@ def save_to_xls(gr=None, title='experiment'):
 
 
 if __name__ == "__main__":
-    gr = GroupRecommender('test_dataset')
-    save_to_xls(gr=gr, title='exp/test')
+    # gr = GroupRecommender('test_dataset')
+    # save_to_xls(gr=gr, title='exp/test')
 
 
-    # gr = GroupRecommender('2_users_dataset_3')
-    # save_to_xls(gr=gr, title='exp/experiment_3_filtered')
-    #
-    # gr = GroupRecommender('5_users_dataset_7')
-    # save_to_xls(gr=gr, title='exp/experiment_5_filtered')
-    #
-    # gr = GroupRecommender('8_users_dataset_15')
-    # save_to_xls(gr=gr, title='exp/experiment_8_filtered')
+    gr = GroupRecommender('2_users_dataset_3')
+    save_to_xls(gr=gr, title='exp/experiment_3_filtered')
+
+    gr = GroupRecommender('5_users_dataset_7')
+    save_to_xls(gr=gr, title='exp/experiment_5_filtered')
+
+    gr = GroupRecommender('8_users_dataset_15')
+    save_to_xls(gr=gr, title='exp/experiment_8_filtered')
 
 
 
