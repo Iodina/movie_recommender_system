@@ -69,13 +69,15 @@ def save_to_xls(gr=None, title='experiment'):
     #
     # i += 1
 
-    this changes matrix
+    #this changes matrix
+
+    res = gr.evaluate(method='before')
 
     ws.write(0, 0, 'Before_raking', style0)
-    ws.write(1, 1, "%s value")
-    ws.write(1, 2, "%s value")
+    ws.write(1, 1, res[0])
+    ws.write(1, 2, res[1])
 
-    
+
 
     # res = gr.evaluate_aggregation_after('average')
     #
