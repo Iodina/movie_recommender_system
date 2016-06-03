@@ -337,7 +337,10 @@ class GroupRecommender(Recommender):
             sorted_scores = np.sort(rating)[::-1]
             rank = np.where(sorted_indexes == j)[0][0]
             score = sorted_scores[rank]
-            return min(np.where(sorted_scores == score)[0])
+            if score:
+                return min(np.where(sorted_scores == score)[0])
+            else:
+                return None
 
         # self.predictions = self.predicted_rating_submatrix_for_fake()
         # initial_rating = self.initial_rating_submatrix()
@@ -356,60 +359,78 @@ class GroupRecommender(Recommender):
             for j in range(num_items):
                 if self.initial_rating[i][j]:
                     rank_j = get_predicted_rating_minima(j)
-                    # if rank_j < 1000:
-                    summa += float(self.initial_rating[i][j] - mean) / math.pow(2, float(rank_j)/num_items)
+                    if rank_j is not None:
+                        summa += float(self.initial_rating[i][j] - mean) / math.pow(2, float(rank_j)/num_items)
             aggregate_sum.append(summa)
         eval_mean = float(sum(aggregate_sum)) / num_users
         eval_misery = min(aggregate_sum)
         return eval_mean, eval_misery
 
-    def MAE(self, GROUND_TRUTH, TEST):
+    def MAE(self, GROUND_TRUTH, TEST, t=None):
         res_sum = 0.0
         not_zero_count = 0
         for i in range(0, len(GROUND_TRUTH)):
             r = GROUND_TRUTH[i]
-            if r > 0.:
+            if ((t is None) and r > 0.) or ((t is not None) and r >= t):
                 not_zero_count += 1
                 r_pred = TEST[i]
                 res_sum += abs(r - r_pred)
         return res_sum / not_zero_count
 
-    def RMSE(self, GROUND_TRUTH, TEST):
+    def RMSE(self, GROUND_TRUTH, TEST, t=None):
         res_sum = 0.0
         not_zero_count = 0
         for i in range(0, len(GROUND_TRUTH)):
             r = GROUND_TRUTH[i]
-            if r > 0.:
+            if ((t is None) and r > 0.) or ((t is not None) and r >= t):
                 not_zero_count += 1
                 r_pred = TEST[i]
                 res_sum += abs(r - r_pred) * abs(r - r_pred)
         return math.sqrt(res_sum) / not_zero_count
 
-    def evaluate_aggregation(self):
-        res_mae = 0
-        res_rmse = 0
+    def evaluate_aggregation_before(self, t=None):
+        maes = []
+        rmses = []
 
         before = self.initial_rating
         after_aggregated = self.predict_for_group_merging_profiles()
-        for count in xrange(before.shape[0]):
-            res_mae += self.MAE(before[count], after_aggregated)
-            res_rmse += self.RMSE(before[count], after_aggregated)
 
-        return res_mae / count, res_rmse / count
+        N = before.shape[0]
+        for count in xrange(N):
+            maes.append(self.MAE(before[count], after_aggregated, t))
+            rmses.append(self.RMSE(before[count], after_aggregated, t))
+
+        return sum(maes) / N, sum(rmses) / N, max(maes), max(rmses)
+        return sum(maes) / N, sum(rmses) / N, max(maes), max(rmses)
+
+    def evaluate_aggregation_after(self, aggr, t=None):
+        maes = []
+        rmses = []
+
+        before = self.initial_rating
+        after_aggregated = self.predict_for_group_merging_recommendations(aggregation=aggr, threshold=t)
+
+        N = before.shape[0]
+        for count in xrange(N):
+            maes.append(self.MAE(before[count], after_aggregated, t))
+            rmses.append(self.RMSE(before[count], after_aggregated, t))
+
+        return sum(maes) / N, sum(rmses) / N, max(maes), max(rmses)
+
 
 
 if __name__ == "__main__":
     gr = GroupRecommender('test_dataset')
     gr.load_local_data('test_dataset', 100, 0)
-    print gr.evaluate_aggregation()
+    # print gr.evaluate_aggregation(gr.predict_for_group_merging_profiles)
 
     # result = gr.predict_for_group_merging_profiles()
     #
     # result = gr.evaluate(aggregation="average", method='before')
     # result = gr.predict_for_group_merging_profiles()
     # cProfile.run("result = gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)")
-    # result = gr.predict_for_group_merging_recommendations(aggregation='average', threshold=2, l=2)
+    result = gr.predict_for_group_merging_recommendations(aggregation='average_without_misery', threshold=9, l=2)
     # for i in result:
     #     print i[0], i[1], "\n"
-    # print result
+    print result
 
