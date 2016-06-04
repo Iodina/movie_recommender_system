@@ -373,7 +373,7 @@ class GroupRecommender(Recommender):
             r = GROUND_TRUTH[i]
             r_pred = TEST[i]
             # if ((t is None) and r > 0.) or ((t is not None) and r >= t):
-            if r_pred > 0:
+            if r_pred > 0 and r > 0:
                 not_zero_count += 1
                 res_sum += abs(r - r_pred)
         return res_sum / not_zero_count
@@ -386,7 +386,7 @@ class GroupRecommender(Recommender):
             r_pred = TEST[i]
 
             # if ((t is None) and r > 0.) or ((t is not None) and r >= t):
-            if r_pred > 0:
+            if r_pred > 0 and r > 0:
                 not_zero_count += 1
                 res_sum += abs(r - r_pred) * abs(r - r_pred)
         return math.sqrt(res_sum) / not_zero_count
@@ -402,8 +402,11 @@ class GroupRecommender(Recommender):
 
         N = before.shape[0]
         for count in xrange(N):
-            maes.append(self.MAE(before[count], after_aggregated, t))
-            rmses.append(self.RMSE(before[count], after_aggregated, t))
+            try:
+                maes.append(self.MAE(before[count], after_aggregated, t))
+                rmses.append(self.RMSE(before[count], after_aggregated, t))
+            except Exception:
+                pass
 
         return sum(maes) / N, sum(rmses) / N, max(maes), max(rmses)
         return sum(maes) / N, sum(rmses) / N, max(maes), max(rmses)
