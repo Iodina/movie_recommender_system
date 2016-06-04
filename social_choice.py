@@ -371,9 +371,10 @@ class GroupRecommender(Recommender):
         not_zero_count = 0
         for i in range(0, len(GROUND_TRUTH)):
             r = GROUND_TRUTH[i]
-            if ((t is None) and r > 0.) or ((t is not None) and r >= t):
+            r_pred = TEST[i]
+            # if ((t is None) and r > 0.) or ((t is not None) and r >= t):
+            if r_pred > 0:
                 not_zero_count += 1
-                r_pred = TEST[i]
                 res_sum += abs(r - r_pred)
         return res_sum / not_zero_count
 
@@ -382,9 +383,11 @@ class GroupRecommender(Recommender):
         not_zero_count = 0
         for i in range(0, len(GROUND_TRUTH)):
             r = GROUND_TRUTH[i]
-            if ((t is None) and r > 0.) or ((t is not None) and r >= t):
+            r_pred = TEST[i]
+
+            # if ((t is None) and r > 0.) or ((t is not None) and r >= t):
+            if r_pred > 0:
                 not_zero_count += 1
-                r_pred = TEST[i]
                 res_sum += abs(r - r_pred) * abs(r - r_pred)
         return math.sqrt(res_sum) / not_zero_count
 

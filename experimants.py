@@ -45,7 +45,7 @@ def save_to_xls(gr=None, title='experiment'):
     for fun in list_T:
         ws.write(i, 0, '%s'%(fun,), style0)
         ws.write(i+1, 0, 'T')
-        for k in range(10):
+        for k in range(9):
 
             ws.write(i+1, k+1, '%s'%(threshold,))
             res = gr.evaluate(aggregation=fun, threshold=threshold)
@@ -59,7 +59,7 @@ def save_to_xls(gr=None, title='experiment'):
     for fun in list_L:
         ws.write(i, 0, '%s'%(fun,), style0)
         ws.write(i+1, 0, 'L')
-        for k in range(10):
+        for k in range(9):
             l = int(l/100 + k*100)
             ws.write(i+1, k+1, '%s'%(l,))
             res = gr.evaluate(aggregation=fun, l=l)
@@ -89,9 +89,9 @@ def save_to_xls(gr=None, title='experiment'):
     ws.write(i+2, 0, 'MAE')
     ws.write(i+4, 0, 'RMSE')
 
-    for k in range(10):
+    for k in range(9):
         ws.write(i+1, k+1, '%s'%(threshold,))
-        res = gr.evaluate_aggregation_after('average', threshold)
+        res = gr.evaluate_aggregation_after('average_without_misery', threshold)
         ws.write(i+2, k+1, res[0])
         ws.write(i+3, k+1, res[2])
         ws.write(i+4, k+1, res[1])
@@ -101,7 +101,7 @@ def save_to_xls(gr=None, title='experiment'):
 
     threshold = 1
 
-    i += 11
+    i += 6
 
     #this changes matrix
 
@@ -141,11 +141,11 @@ if __name__ == "__main__":
     gr = GroupRecommender('2_users_9fake_dataset_3')
     save_to_xls(gr=gr, title='exp/experiment_9fake_filtered')
 
-    # gr = GroupRecommender('5_users_dataset_7')
-    # save_to_xls(gr=gr, title='exp/experiment_5_filtered')
-    #
-    # gr = GroupRecommender('8_users_dataset_15')
-    # save_to_xls(gr=gr, title='exp/experiment_8_filtered')
+    gr = GroupRecommender('5_users_dataset_7')
+    save_to_xls(gr=gr, title='exp/experiment_5_filtered')
+
+    gr = GroupRecommender('8_users_dataset_15')
+    save_to_xls(gr=gr, title='exp/experiment_8_filtered')
 
 
 
