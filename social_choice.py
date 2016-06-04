@@ -327,7 +327,7 @@ class GroupRecommender(Recommender):
         :param aggregation:
         :return:
         """
-        def get_predicted_rating_minima(j):
+        def get_predicted_rating_minima(j, rating):
             """
             Get minimum rank with similar scores
             :param j:
@@ -346,9 +346,9 @@ class GroupRecommender(Recommender):
         # initial_rating = self.initial_rating_submatrix()
         if method == 'after':
             aggregate = self.aggregation_function.get(aggregation)
-            rating = aggregate(threshold=threshold, l=l)
+            self.rating = aggregate(threshold=threshold, l=l)
         elif method == 'before':
-            rating = self.predict_for_group_merging_profiles()
+            self.rating = self.predict_for_group_merging_profiles()
         num_users = self.predictions.shape[0]
         num_items = self.predictions.shape[1]
         aggregate_sum = []
@@ -358,7 +358,7 @@ class GroupRecommender(Recommender):
             summa = 0
             for j in range(num_items):
                 if self.initial_rating[i][j]:
-                    rank_j = get_predicted_rating_minima(j)
+                    rank_j = get_predicted_rating_minima(j, self.rating)
                     if rank_j is not None:
                         summa += float(self.initial_rating[i][j] - mean) / math.pow(2, float(rank_j)/num_items)
             aggregate_sum.append(summa)
@@ -393,7 +393,9 @@ class GroupRecommender(Recommender):
         rmses = []
 
         before = self.initial_rating
-        after_aggregated = self.predict_for_group_merging_profiles()
+
+        # can be not defined
+        after_aggregated = self.rating
 
         N = before.shape[0]
         for count in xrange(N):
@@ -422,14 +424,16 @@ class GroupRecommender(Recommender):
 if __name__ == "__main__":
     gr = GroupRecommender('test_dataset')
     gr.load_local_data('test_dataset', 100, 0)
-    # print gr.evaluate_aggregation(gr.predict_for_group_merging_profiles)
+
 
     # result = gr.predict_for_group_merging_profiles()
     #
     # result = gr.evaluate(aggregation="average", method='before')
+    # print gr.evaluate_aggregation_before()
+
     # result = gr.predict_for_group_merging_profiles()
     # cProfile.run("result = gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)")
-    result = gr.predict_for_group_merging_recommendations(aggregation='average_without_misery', threshold=9, l=2)
+    result = gr.predict_for_group_merging_recommendations(aggregation='average_without_misery', threshold=10, l=2)
     # for i in result:
     #     print i[0], i[1], "\n"
     print result
