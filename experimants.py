@@ -136,10 +136,10 @@ if __name__ == "__main__":
     save_to_xls(gr=gr, title='exp/experiment_3_filtered')
 
     gr = GroupRecommender('2_users_6fake_dataset_3')
-    save_to_xls(gr=gr, title='exp/experiment_3_filtered')
+    save_to_xls(gr=gr, title='exp/experiment_6fake_filtered')
 
     gr = GroupRecommender('2_users_9fake_dataset_3')
-    save_to_xls(gr=gr, title='exp/experiment_3_filtered')
+    save_to_xls(gr=gr, title='exp/experiment_9fake_filtered')
 
     # gr = GroupRecommender('5_users_dataset_7')
     # save_to_xls(gr=gr, title='exp/experiment_5_filtered')
