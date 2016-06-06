@@ -21,7 +21,7 @@ import xlwt
 
 
 class GroupRecommender(Recommender):
-    def __init__(self, datafile_path):
+    def __init__(self, datafile_path=None):
         Recommender.__init__(self, datafile_path=datafile_path)
         self.load_local_data(datafile_path, 100, 0)
         self.predictions = self.predicted_rating_submatrix_for_fake()
@@ -45,7 +45,7 @@ class GroupRecommender(Recommender):
     def _norm(self, vector):
         return np.linalg.norm(vector)
 
-    def _get_top_list(self, res_vector, top=None, relative=True, title=False):
+    def _get_top_list(self, res_vector, top=None, relative=True, title=True):
         """
         Determine top `top` films recommended for a Group
         by Group Preferences vector
@@ -120,8 +120,9 @@ class GroupRecommender(Recommender):
         :return np array in relative values
         """
         top = kwargs.get('top')
+        title = kwargs.get('title')
         res_vector = self.predictions.sum(axis=0)
-        return self._get_top_list(res_vector, top=top, relative=True)
+        return self._get_top_list(res_vector, top=top, relative=True, title=title)
 
     def multiplicative(self, **kwargs):
         """Calculate Group preference with multiplicative strategy
@@ -441,9 +442,9 @@ if __name__ == "__main__":
     # print gr.evaluate_aggregation_before()
 
     # result = gr.predict_for_group_merging_profiles()
-    # cProfile.run("result = gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)")
-    result = gr.predict_for_group_merging_recommendations(aggregation='average_without_misery', threshold=10, l=2)
-    # for i in result:
-    #     print i[0], i[1], "\n"
-    print result
 
+    # cProfile.run("gr.predict_for_group_merging_recommendations(aggregation='additive', threshold=5, top=10, l=3)", 'Profiling/additive')
+    result = gr.predict_for_group_merging_recommendations(aggregation='average', threshold=10, l=2, top=10, title=True)
+    for i in result:
+        print i[0], i[1], "\n"
+    # print result

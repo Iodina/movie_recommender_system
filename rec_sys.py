@@ -44,7 +44,7 @@ class Recommender:
         return self.predict_matrix
 
 
-    def predict_for_user(self, user_index, min_rate=1, max_rate=10, top = None, K=None, min_values=None):
+    def predict_for_user(self, user_index, min_rate=1, max_rate=10, top = None, repeat=False, K=None, min_values=None):
         """
         :param K: to change the number of properties
         :return: {Film : int(rate), ...} or
@@ -61,6 +61,13 @@ class Recommender:
                                     MAX_VALUE=max_rate)
             film = self.matrix.indexes_films_map[index]
             prediction[film] = rate
+
+        if not repeat:
+            fake_user_index = self.matrix.indexes_with_fake_user_ids.keys()[0]
+            user = self.matrix.indexes_users_map[fake_user_index]
+            films = user.get_preferences().keys()
+
+            prediction = [(x, prediction[x]) for x in prediction if x not in films]
 
         if top:
             prediction = sorted(prediction.items(), key=operator.itemgetter(1))
